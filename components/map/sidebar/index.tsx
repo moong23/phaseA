@@ -8,6 +8,9 @@ import ResultCard from "./resultCard";
 import { ICardBuildingData } from "@/interfaces/sidebar";
 import { SortValues } from "@/constants/mapData";
 import { dummyBuildingData } from "@/dummy/dummyBuilding";
+import { useRecoilState } from "recoil";
+import { sidebarRecoilData } from "@/state/atom";
+import { fetcher } from "@/api/fetcher";
 
 const detailLine = "w-full flex flex-row gap-6";
 const detailLeftCls = "font-semibold whitespace-nowrap";
@@ -27,6 +30,8 @@ const DummyData: ICardBuildingData[] = [
 const MapSidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarType, setSidebarType] = useState(0);
+  const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
+  const [selectedBuilidng, setSelectedBuilding] = useState<ICardBuildingData>();
   const [sortStatus, setSortStatus] = useState({
     status: false,
     value: SortValues.profitRate,
@@ -48,6 +53,15 @@ const MapSidebar = () => {
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     setSidebarType((prev) => 1 - prev);
   };
+
+  useEffect(() => {
+    setSidebarOpen(true);
+    setSidebarType(1);
+    fetcher.get(`rstate/${sidebarID}`).then((res) => {
+      console.log(res.data);
+      setSelectedBuilding(res.data);
+    });
+  }, [sidebarID]);
 
   return (
     <>
@@ -134,124 +148,147 @@ const MapSidebar = () => {
               </div>
             </>
           ) : (
-            <div className="w-full flex flex-col">
-              <ResultCard
-                buildingData={dummyBuildingData[0]}
-                onClick={handleCardClick}
-                type={sidebarType}
-              />
-              <div className="w-full h-[1px] border border-gray-200 my-4" />
-              <div className="w-full flex flex-col gap-4">
-                <div className={`${detailLine}`}>
-                  <div className="basis-2/5 flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>건물타입</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].articleDetail_articleName}
+            selectedBuilidng && (
+              <div className="w-full flex flex-col">
+                <ResultCard
+                  buildingData={dummyBuildingData[0]}
+                  onClick={handleCardClick}
+                  type={sidebarType}
+                />
+                <div className="w-full h-[1px] border border-gray-200 my-4" />
+                <div className="w-full flex flex-col gap-4">
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>건물타입</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].articleDetail_articleName} */}
+                        {selectedBuilidng.articleDetail_articleName}
+                      </div>
+                    </div>
+                    <div className="flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>건물허가일자</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].articleDetail_articleConfirmYMD} */}
+                        {selectedBuilidng.articleDetail_articleConfirmYMD}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>건물허가일자</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].articleDetail_articleConfirmYMD}
-                    </div>
-                  </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>건물 pnu</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].articleDetail_pnu}
+                  <div className={`${detailLine}`}>
+                    <div className="flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>건물 pnu</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].articleDetail_pnu} */}
+                        {selectedBuilidng.articleDetail_pnu}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="basis-2/5 flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>층수정보</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].articleAddition_floorInfo}
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>층수정보</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].articleAddition_floorInfo} */}
+                        {selectedBuilidng.articleAddition_floorInfo}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>건물 상세 주소</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].articleDetail_exposureAddress}{" "}
-                      {dummyBuildingData[2].articleDetail_etcAddress || ""}
+                  <div className={`${detailLine}`}>
+                    <div className="flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>건물 상세 주소</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].articleDetail_exposureAddress}{" "}
+                        {dummyBuildingData[2].articleDetail_etcAddress || ""} */}
+                        {selectedBuilidng.articleDetail_exposureAddress}{" "}
+                        {selectedBuilidng.articleDetail_etcAddress || ""}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="basis-2/5 flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>건물매매가총액</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].articlePrice_dealPrice}
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>건물매매가총액</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].articlePrice_dealPrice} */}
+                        {selectedBuilidng.articlePrice_dealPrice}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="basis-2/5 flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>토지면적</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].lndpclAr}
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>토지면적</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].lndpclAr} */}
+                        {selectedBuilidng.lndpclAr}
+                      </div>
+                    </div>
+                    <div className="flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>용도지역</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[2].prposArea1Nm} */}
+                        {selectedBuilidng.prposArea1Nm}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>용도지역</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[2].prposArea1Nm}
-                    </div>
-                  </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="basis-2/5 flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>토지타입</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].tpgrphHgCodeNm} |{" "}
-                      {dummyBuildingData[0].tpgrphFrmCodeNm} |{" "}
-                      {dummyBuildingData[0].roadSideCodeNm}
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>토지타입</div>
+                      <div className={`${detailRightCls}`}>
+                        {/* {dummyBuildingData[0].tpgrphHgCodeNm} |{" "}
+                        {dummyBuildingData[0].tpgrphFrmCodeNm} |{" "}
+                        {dummyBuildingData[0].roadSideCodeNm} */}
+                        {selectedBuilidng.tpgrphHgCodeNm} |{" "}
+                        {selectedBuilidng.tpgrphFrmCodeNm} |{" "}
+                        {selectedBuilidng.roadSideCodeNm}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="basis-2/5 flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>평당 건물가격</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].buildingPricePerSqft}
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>평당 건물가격</div>
+                      <div className={`${detailRightCls}`}>
+                        {dummyBuildingData[0].buildingPricePerSqft}
+                        {/* {selectedBuilidng.buildingPricePerSqft} */}
+                      </div>
+                    </div>
+                    <div className="flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>용적율</div>
+                      <div className={`${detailRightCls}`}>
+                        {dummyBuildingData[0].floorAreaRatio}
+                        {/* {selectedBuilidng.floorAreaRatio} */}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>용적율</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].floorAreaRatio}
-                    </div>
-                  </div>
-                </div>
 
-                <div className={`${detailLine}`}>
-                  <div className="basis-2/5 flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>평당 토지가격</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].groundPrice}
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>평당 토지가격</div>
+                      <div className={`${detailRightCls}`}>
+                        {dummyBuildingData[0].groundPrice}
+                        {/* {selectedBuilidng.groundPrice} */}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-row gap-6">
-                    <div className={`${detailLeftCls}`}>자기투자금액</div>
-                    <div className={`${detailRightCls}`}>
-                      {dummyBuildingData[0].selfInvestmentPrice}(천원)
+                    <div className="flex flex-row gap-6">
+                      <div className={`${detailLeftCls}`}>자기투자금액</div>
+                      <div className={`${detailRightCls}`}>
+                        {dummyBuildingData[0].selfInvestmentPrice}(천원)
+                        {/* {selectedBuilidng.selfInvestmentPrice}(천원) */}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )
           )}
+          {/* 
+          추가 작업
+          숫자 데이터에 콤마 추가
+          단위 추가
+           */}
         </aside>
       )}
       <div

@@ -10,3 +10,8 @@ export const searchRecoilData = atom({
   key: "searchData",
   default: "",
 });
+
+export const sidebarRecoilData = atom({
+  key: "sidebarData",
+  default: -1,
+});
