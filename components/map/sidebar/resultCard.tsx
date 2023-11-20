@@ -5,7 +5,7 @@ const ResultCard = ({
   onClick,
   type,
 }: {
-  buildingData: ICardBuildingData;
+  buildingData: any;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   type?: number;
 }) => {

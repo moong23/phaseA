@@ -31,7 +31,7 @@ const MapSidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarType, setSidebarType] = useState(0);
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
-  const [selectedBuilidng, setSelectedBuilding] = useState<ICardBuildingData>();
+  const [selectedBuilidng, setSelectedBuilding] = useState<any>();
   const [sortStatus, setSortStatus] = useState({
     status: false,
     value: SortValues.profitRate,

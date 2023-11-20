@@ -6,4 +6,9 @@ export interface ICardBuildingData {
   articleDetail_sectionName: string;
   profitRate: string;
   articleDetail_exposureAddress?: string;
+  articleDetail_articleConfirmYMD?: string;
+  articleDetail_pnu?: string;
+  articleAddition_floorInfo?: string;
+  articleDetail_etcAddress?: string;
+  articlePrice_dealPrice?: string;
 }
