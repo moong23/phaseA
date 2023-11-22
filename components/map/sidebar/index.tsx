@@ -211,7 +211,10 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>건물매매가총액</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articlePrice_dealPrice} */}
-                        {selectedBuilidng.articlePrice_dealPrice}
+                        {Number(
+                          selectedBuilidng.articlePrice_dealPrice
+                        ).toLocaleString()}
+                        (천원)
                       </div>
                     </div>
                   </div>
