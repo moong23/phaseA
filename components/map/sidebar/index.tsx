@@ -8,8 +8,8 @@ import ResultCard from "./resultCard";
 import { ICardBuildingData } from "@/interfaces/sidebar";
 import { SortValues } from "@/constants/mapData";
 import { dummyBuildingData } from "@/dummy/dummyBuilding";
-import { useRecoilState } from "recoil";
-import { sidebarRecoilData } from "@/state/atom";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { buildingOnView, sidebarRecoilData, sidebarSort } from "@/state/atom";
 import { fetcher } from "@/api/fetcher";
 
 const detailLine = "w-full flex flex-row gap-6";
@@ -31,11 +31,9 @@ const MapSidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarType, setSidebarType] = useState(0);
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
+  const buildingData = useRecoilValue(buildingOnView);
   const [selectedBuilidng, setSelectedBuilding] = useState<any>();
-  const [sortStatus, setSortStatus] = useState({
-    status: false,
-    value: SortValues.profitRate,
-  });
+  const [sortStatus, setSortStatus] = useRecoilState(sidebarSort);
 
   const handleSortChange = (e: React.MouseEvent<HTMLDivElement>) => {
     const targetText = e.currentTarget.innerText;
@@ -50,11 +48,17 @@ const MapSidebar = () => {
     setSortStatus({ status: false, value: SortValues[targetKey] });
   };
 
-  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleCardClick = (id?: string) => {
+    if (sidebarType === 0 && id) {
+      console.log(id);
+      setSidebarID(Number(id));
+    }
     setSidebarType((prev) => 1 - prev);
   };
 
   useEffect(() => {
+    if (sidebarID === -1) return;
+
     setSidebarOpen(true);
     setSidebarType(1);
     fetcher.get(`rstate/${sidebarID}`).then((res) => {
@@ -71,7 +75,7 @@ const MapSidebar = () => {
         }
       `}</style>
       {sidebarOpen && (
-        <aside className="h-full min-w-[500px] border-r border-r-gray-400 bg-white absolute left-0 z-30 pt-[120px] px-16 shadow-lg flex flex-col">
+        <aside className="h-full min-w-[529px] border-r border-r-gray-400 bg-white absolute left-0 z-30 pt-[120px] px-16 shadow-lg flex flex-col">
           {sidebarType === 0 ? (
             <>
               <div className="flex flex-row gap-2 items-center">
@@ -124,21 +128,12 @@ const MapSidebar = () => {
                 id="cardArea"
                 className="h-full flex flex-col overflow-y-scroll gap-3"
               >
-                {dummyBuildingData.map((building) => (
+                {buildingData.map((building: any) => (
                   <div key={building.articleDetail_articleNo}>
                     <ResultCard
                       buildingData={building}
-                      onClick={handleCardClick}
+                      onClick={() => handleCardClick(building.id)}
                     />
-                    <div
-                      id="borderLine"
-                      className="w-full h-[1px] border border-gray-200 mt-3"
-                    />
-                  </div>
-                ))}
-                {Array.from({ length: 10 }, (_, idx) => (
-                  <div key={idx}>
-                    <ResultCard buildingData={DummyData[0]} />
                     <div
                       id="borderLine"
                       className="w-full h-[1px] border border-gray-200 mt-3"
@@ -151,8 +146,8 @@ const MapSidebar = () => {
             selectedBuilidng && (
               <div className="w-full flex flex-col">
                 <ResultCard
-                  buildingData={dummyBuildingData[0]}
-                  onClick={handleCardClick}
+                  buildingData={selectedBuilidng}
+                  onClick={() => handleCardClick()}
                   type={sidebarType}
                 />
                 <div className="w-full h-[1px] border border-gray-200 my-4" />
@@ -224,14 +219,19 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>토지면적</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].lndpclAr} */}
-                        {selectedBuilidng.lndpclAr}
+                        {selectedBuilidng.lndpclAr}m<sup>2</sup>
                       </div>
                     </div>
-                    <div className="flex flex-row gap-6">
-                      <div className={`${detailLeftCls}`}>용도지역</div>
-                      <div className={`${detailRightCls}`}>
-                        {/* {dummyBuildingData[2].prposArea1Nm} */}
-                        {selectedBuilidng.prposArea1Nm}
+                  </div>
+
+                  <div className={`${detailLine}`}>
+                    <div className="basis-2/5 flex flex-row gap-6">
+                      <div className="flex flex-row gap-6">
+                        <div className={`${detailLeftCls}`}>용도지역</div>
+                        <div className={`${detailRightCls}`}>
+                          {/* {dummyBuildingData[2].prposArea1Nm} */}
+                          {selectedBuilidng.prposArea1Nm}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -254,7 +254,10 @@ const MapSidebar = () => {
                     <div className="basis-2/5 flex flex-row gap-6">
                       <div className={`${detailLeftCls}`}>평당 건물가격</div>
                       <div className={`${detailRightCls}`}>
-                        {dummyBuildingData[0].buildingPricePerSqft}
+                        {Number(
+                          dummyBuildingData[0].buildingPricePerSqft
+                        ).toLocaleString()}
+                        (천원)
                         {/* {selectedBuilidng.buildingPricePerSqft} */}
                       </div>
                     </div>
@@ -271,15 +274,25 @@ const MapSidebar = () => {
                     <div className="basis-2/5 flex flex-row gap-6">
                       <div className={`${detailLeftCls}`}>평당 토지가격</div>
                       <div className={`${detailRightCls}`}>
-                        {dummyBuildingData[0].groundPrice}
+                        {Number(
+                          dummyBuildingData[0].groundPrice
+                        ).toLocaleString()}
+                        (천원)
                         {/* {selectedBuilidng.groundPrice} */}
                       </div>
                     </div>
+                  </div>
+                  <div className={`${detailLine}`}>
                     <div className="flex flex-row gap-6">
-                      <div className={`${detailLeftCls}`}>자기투자금액</div>
-                      <div className={`${detailRightCls}`}>
-                        {dummyBuildingData[0].selfInvestmentPrice}(천원)
-                        {/* {selectedBuilidng.selfInvestmentPrice}(천원) */}
+                      <div className="basis-2/5 flex flex-row gap-6">
+                        <div className={`${detailLeftCls}`}>자기투자금액</div>
+                        <div className={`${detailRightCls}`}>
+                          {Number(
+                            dummyBuildingData[0].selfInvestmentPrice
+                          ).toLocaleString()}
+                          (천원)
+                          {/* {selectedBuilidng.selfInvestmentPrice}(천원) */}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -287,15 +300,10 @@ const MapSidebar = () => {
               </div>
             )
           )}
-          {/* 
-          추가 작업
-          숫자 데이터에 콤마 추가
-          단위 추가
-           */}
         </aside>
       )}
       <div
-        className={`${sidebarOpen ? "ml-[500px]" : "ml-0"} 
+        className={`${sidebarOpen ? "ml-[529px]" : "ml-0"} 
       absolute w-12 h-20 bg-white top-1/2 z-20 border border-black border-l-0 rounded-r-lg shadow-md translate-y-[-50%] flex items-center justify-center cursor-pointer`}
         onClick={() => setSidebarOpen((prev) => !prev)}
       >

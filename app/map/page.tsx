@@ -7,8 +7,8 @@ import { FilterValues } from "@/constants/mapData";
 import MapSidebar from "@/components/map/sidebar";
 import MapInput from "@/components/map/input";
 import { fetcher } from "@/api/fetcher";
-import { useRecoilState } from "recoil";
-import { sidebarRecoilData } from "@/state/atom";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { buildingOnView, sidebarRecoilData, sidebarSort } from "@/state/atom";
 
 const INITIAL_MAP_POSITION = {
   lat: 37.532199,
@@ -17,11 +17,16 @@ const INITIAL_MAP_POSITION = {
 const INITIAL_MAP_ZOOM = 8;
 
 export default function Home() {
-  const [buildingData, setBuildingData] = useState<any[]>([]);
+  const [buildingData, setBuildingData] = useState<any>([]);
   const [doneFlag, setDoneFlag] = useState(false); // for infinite scroll
   const [pageNum, setPageNum] = useState(1);
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
-  const mapRef = useRef(null);
+  const mapRef = useRef<any>(null);
+  const sidebarSortState = useRecoilValue(sidebarSort);
+  const [selectedBuilding, setSelectedBuilding] =
+    useRecoilState(buildingOnView);
+  const markersRef = useRef<any>([]);
+
   useEffect(() => {
     const kakaoMapScript = document.createElement("script");
     kakaoMapScript.async = false;
@@ -41,6 +46,25 @@ export default function Home() {
           };
 
           mapRef.current = new window.kakao.maps.Map(container, options);
+          if (mapRef.current !== null) {
+            const logMapBounds = () => {
+              const bounds = mapRef.current.getBounds();
+              console.log("Map Bounds:", bounds);
+              console.log("south west:", bounds.getSouthWest().toString());
+            };
+
+            // Add event listeners
+            window.kakao.maps.event.addListener(
+              mapRef.current,
+              "dragend",
+              logMapBounds
+            );
+            window.kakao.maps.event.addListener(
+              mapRef.current,
+              "zoom_changed",
+              logMapBounds
+            );
+          }
         });
       }
     };
@@ -50,30 +74,62 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (pageNum === -1) return;
+    let isCancelled = false;
+
+    if (doneFlag) return;
+
     fetcher
       .get(`rstate/?page=${pageNum}`)
       .then((res) => {
-        // console.log(res.data.data);
+        if (isCancelled) return;
+
         if (res.data.data.length === 0) {
           setPageNum(-1);
           setDoneFlag(true);
           console.log("total building data num: ", buildingData.length);
-          return;
         } else {
-          setBuildingData((prev) => [...prev, ...res.data.data]);
+          setBuildingData((prev: any) => [...prev, ...res.data.data]);
           setPageNum((prev) => prev + 1);
         }
       })
       .catch((err) => {
+        if (isCancelled) return;
+
         console.log(err);
         setPageNum(-1);
       });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [pageNum]);
 
   useEffect(() => {
+    const clearMarkers = () => {
+      markersRef.current.forEach((marker: any) => {
+        marker.setMap(null);
+      });
+      markersRef.current = [];
+    };
+    const sortedBuilding = buildingData.sort((a: any, b: any) => {
+      if (sidebarSortState.value === "건물 면적") {
+        return -a.articleAddition_area1 + b.articleAddition_area1;
+      } else if (sidebarSortState.value === "연면적") {
+        return -a.lndpclAr + b.lndpclAr;
+      } else if (sidebarSortState.value === "토지 가격") {
+        return -a.articlePrice_dealPrice + b.articlePrice_dealPrice;
+      } else if (sidebarSortState.value === "자기 투자 금액") {
+        return -a.selfInvestmentPrice + b.selfInvestmentPrice;
+      } else if (sidebarSortState.value === "수익률") {
+        return -a.profitRate + b.profitRate;
+      }
+    });
+    console.log(sidebarSortState.value, sortedBuilding.slice(0, 200));
+    setSelectedBuilding(sortedBuilding.slice(0, 200));
+
     if (buildingData.length > 0 && mapRef.current) {
-      buildingData.forEach((building) => {
+      clearMarkers();
+      buildingData.slice(0, 200).forEach((building: any) => {
         const position = new window.kakao.maps.LatLng(
           building.articleDetail_latitude,
           building.articleDetail_longitude
@@ -97,9 +153,10 @@ export default function Home() {
         window.kakao.maps.event.addListener(marker, "click", function () {
           setSidebarID(building.id);
         });
+        markersRef.current.push(marker);
       });
     }
-  }, [doneFlag]);
+  }, [doneFlag, sidebarSortState]);
 
   return (
     <>

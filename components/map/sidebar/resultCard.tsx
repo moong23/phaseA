@@ -12,7 +12,7 @@ const ResultCard = ({
   return (
     <div
       onClick={onClick}
-      className="w-full flex flex-row justify-between cursor-pointer"
+      className="w-[400px] flex flex-row justify-between cursor-pointer"
     >
       <div className="h-24 flex-shrink-0 flex flex-col gap-2">
         <div className="flex flex-row gap-2 items-center">

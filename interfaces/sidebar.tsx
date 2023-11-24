@@ -11,4 +11,5 @@ export interface ICardBuildingData {
   articleAddition_floorInfo?: string;
   articleDetail_etcAddress?: string;
   articlePrice_dealPrice?: string;
+  articleDetail_articleNo?: string;
 }

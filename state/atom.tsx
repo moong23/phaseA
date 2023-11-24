@@ -15,3 +15,16 @@ export const sidebarRecoilData = atom({
   key: "sidebarData",
   default: -1,
 });
+
+export const buildingOnView = atom({
+  key: "buildingOnView",
+  default: [],
+});
+
+export const sidebarSort = atom({
+  key: "sidebarSort",
+  default: {
+    status: false,
+    value: "토지 가격",
+  },
+});
