@@ -25,6 +25,6 @@ export const sidebarSort = atom({
   key: "sidebarSort",
   default: {
     status: false,
-    value: "토지 가격",
+    value: "수익률",
   },
 });

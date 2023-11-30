@@ -11,28 +11,18 @@ import { dummyBuildingData } from "@/dummy/dummyBuilding";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { buildingOnView, sidebarRecoilData, sidebarSort } from "@/state/atom";
 import { fetcher } from "@/api/fetcher";
+import { IApiData, IApiIndivData } from "@/interfaces/calcData";
 
 const detailLine = "w-full flex flex-row gap-6";
 const detailLeftCls = "font-semibold whitespace-nowrap";
 const detailRightCls = "font-normal text-gray-400 whitespace-nowrap";
-
-const DummyData: ICardBuildingData[] = [
-  {
-    articleDetail_articleName: "상가건물",
-    prposArea1Nm: "일반 상업 지역",
-    tpgrphHgCodeNm: "평지",
-    articleDetail_sectionName: "신문로 2가",
-    profitRate: "string",
-    articleDetail_exposureAddress: "서울시 종로구 신문로 2가",
-  },
-];
 
 const MapSidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarType, setSidebarType] = useState(0);
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
   const buildingData = useRecoilValue(buildingOnView);
-  const [selectedBuilidng, setSelectedBuilding] = useState<any>();
+  const [selectedBuilidng, setSelectedBuilding] = useState<IApiIndivData>();
   const [sortStatus, setSortStatus] = useRecoilState(sidebarSort);
 
   const handleSortChange = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -48,10 +38,10 @@ const MapSidebar = () => {
     setSortStatus({ status: false, value: SortValues[targetKey] });
   };
 
-  const handleCardClick = (id?: string) => {
+  const handleCardClick = (id?: number) => {
     if (sidebarType === 0 && id) {
       console.log(id);
-      setSidebarID(Number(id));
+      setSidebarID(id);
     }
     setSidebarType((prev) => 1 - prev);
   };
@@ -128,11 +118,11 @@ const MapSidebar = () => {
                 id="cardArea"
                 className="h-full flex flex-col overflow-y-scroll gap-3"
               >
-                {buildingData.map((building: any) => (
-                  <div key={building.articleDetail_articleNo}>
+                {buildingData.map((building: IApiData) => (
+                  <div key={building.rstate.id}>
                     <ResultCard
                       buildingData={building}
-                      onClick={() => handleCardClick(building.id)}
+                      onClick={() => handleCardClick(building.rstate.id)}
                     />
                     <div
                       id="borderLine"
@@ -157,14 +147,17 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>건물타입</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articleDetail_articleName} */}
-                        {selectedBuilidng.articleDetail_articleName}
+                        {selectedBuilidng.rstate.articleDetail_articleName}
                       </div>
                     </div>
                     <div className="flex flex-row gap-6">
                       <div className={`${detailLeftCls}`}>건물허가일자</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articleDetail_articleConfirmYMD} */}
-                        {selectedBuilidng.articleDetail_articleConfirmYMD}
+                        {
+                          selectedBuilidng.rstate
+                            .articleDetail_articleConfirmYMD
+                        }
                       </div>
                     </div>
                   </div>
@@ -174,7 +167,7 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>건물 pnu</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articleDetail_pnu} */}
-                        {selectedBuilidng.articleDetail_pnu}
+                        {selectedBuilidng.rstate.articleDetail_pnu}
                       </div>
                     </div>
                   </div>
@@ -184,7 +177,7 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>층수정보</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articleAddition_floorInfo} */}
-                        {selectedBuilidng.articleAddition_floorInfo}
+                        {selectedBuilidng.rstate.articleAddition_floorInfo}
                       </div>
                     </div>
                   </div>
@@ -195,8 +188,8 @@ const MapSidebar = () => {
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articleDetail_exposureAddress}{" "}
                         {dummyBuildingData[2].articleDetail_etcAddress || ""} */}
-                        {selectedBuilidng.articleDetail_exposureAddress}{" "}
-                        {selectedBuilidng.articleDetail_etcAddress || ""}
+                        {selectedBuilidng.rstate.articleDetail_exposureAddress}{" "}
+                        {selectedBuilidng.rstate.articleDetail_etcAddress || ""}
                       </div>
                     </div>
                   </div>
@@ -206,9 +199,7 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>건물매매가총액</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articlePrice_dealPrice} */}
-                        {Number(
-                          selectedBuilidng.articlePrice_dealPrice
-                        ).toLocaleString()}
+                        {selectedBuilidng.rstate.articlePrice_dealPrice.toLocaleString()}
                         (천원)
                       </div>
                     </div>
@@ -219,7 +210,7 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>토지면적</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].lndpclAr} */}
-                        {selectedBuilidng.lndpclAr}m<sup>2</sup>
+                        {selectedBuilidng.rstate.lndpclAr}m<sup>2</sup>
                       </div>
                     </div>
                   </div>
@@ -230,7 +221,7 @@ const MapSidebar = () => {
                         <div className={`${detailLeftCls}`}>용도지역</div>
                         <div className={`${detailRightCls}`}>
                           {/* {dummyBuildingData[2].prposArea1Nm} */}
-                          {selectedBuilidng.prposArea1Nm}
+                          {selectedBuilidng.rstate.prposArea1Nm}
                         </div>
                       </div>
                     </div>
@@ -243,9 +234,9 @@ const MapSidebar = () => {
                         {/* {dummyBuildingData[0].tpgrphHgCodeNm} |{" "}
                         {dummyBuildingData[0].tpgrphFrmCodeNm} |{" "}
                         {dummyBuildingData[0].roadSideCodeNm} */}
-                        {selectedBuilidng.tpgrphHgCodeNm} |{" "}
-                        {selectedBuilidng.tpgrphFrmCodeNm} |{" "}
-                        {selectedBuilidng.roadSideCodeNm}
+                        {selectedBuilidng.rstate.tpgrphHgCodeNm} |{" "}
+                        {selectedBuilidng.rstate.tpgrphFrmCodeNm} |{" "}
+                        {selectedBuilidng.rstate.roadSideCodeNm}
                       </div>
                     </div>
                   </div>
@@ -254,18 +245,17 @@ const MapSidebar = () => {
                     <div className="basis-2/5 flex flex-row gap-6">
                       <div className={`${detailLeftCls}`}>평당 건물가격</div>
                       <div className={`${detailRightCls}`}>
-                        {Number(
-                          dummyBuildingData[0].buildingPricePerSqft
-                        ).toLocaleString()}
-                        (천원)
+                        {selectedBuilidng.rstate_calculate.building_unit_price.toLocaleString()}
+                        (만원)
                         {/* {selectedBuilidng.buildingPricePerSqft} */}
                       </div>
                     </div>
                     <div className="flex flex-row gap-6">
                       <div className={`${detailLeftCls}`}>용적율</div>
                       <div className={`${detailRightCls}`}>
-                        {dummyBuildingData[0].floorAreaRatio}
-                        {/* {selectedBuilidng.floorAreaRatio} */}
+                        {selectedBuilidng.rstate_calculate.floor_area_ratio *
+                          100}
+                        %{/* {selectedBuilidng.floorAreaRatio} */}
                       </div>
                     </div>
                   </div>
@@ -274,9 +264,7 @@ const MapSidebar = () => {
                     <div className="basis-2/5 flex flex-row gap-6">
                       <div className={`${detailLeftCls}`}>평당 토지가격</div>
                       <div className={`${detailRightCls}`}>
-                        {Number(
-                          dummyBuildingData[0].groundPrice
-                        ).toLocaleString()}
+                        {selectedBuilidng.rstate_calculate.land_price.toLocaleString()}
                         (천원)
                         {/* {selectedBuilidng.groundPrice} */}
                       </div>
@@ -287,9 +275,7 @@ const MapSidebar = () => {
                       <div className="basis-2/5 flex flex-row gap-6">
                         <div className={`${detailLeftCls}`}>자기투자금액</div>
                         <div className={`${detailRightCls}`}>
-                          {Number(
-                            dummyBuildingData[0].selfInvestmentPrice
-                          ).toLocaleString()}
+                          {selectedBuilidng.rstate_calculate.personal_investment_amount.toLocaleString()}
                           (천원)
                           {/* {selectedBuilidng.selfInvestmentPrice}(천원) */}
                         </div>

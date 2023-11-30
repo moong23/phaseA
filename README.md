@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# PhaseA outsourcing project
 
-## Getting Started
+필터링 은 전체 데이터에 대해서
 
-First, run the development server:
+엑셀 export 시, 전체 데이터에 대해서
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+지적도,거리뷰 기능 추가
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+세로한면(가) 등등 - roadSide 뭐시기
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+lndpclAr : 토지면적 (m2)
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+연면적 => 계산해서 나오는 값
 
-## Learn More
+articleDetail_articleName : 도로는 필터링 제외
+스플릿으로 맨 앞값만
 
-To learn more about Next.js, take a look at the following resources:
+용도지역 S (proposal)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+dealprice : 전체 매물가격
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+평당 토지가격 => 둘 다 하는 걸로
 
-## Deploy on Vercel
+현제 데이터가 언제 기준인지도
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+회색 사진 눌렀을 때 근처 로드뷰 ?
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+필터링 우선
+
+수익률 계산
+
+필터링해서 움직이는 것
+
+어드민계정 부여해서 id,pw 입력하면 들어가게끔

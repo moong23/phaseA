@@ -9,6 +9,8 @@ import MapInput from "@/components/map/input";
 import { fetcher } from "@/api/fetcher";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { buildingOnView, sidebarRecoilData, sidebarSort } from "@/state/atom";
+import { SortValues } from "@/constants/mapData";
+import { IApiData } from "@/interfaces/calcData";
 
 const INITIAL_MAP_POSITION = {
   lat: 37.532199,
@@ -16,16 +18,22 @@ const INITIAL_MAP_POSITION = {
 };
 const INITIAL_MAP_ZOOM = 8;
 
+const getKeyByValue = (object: any, value: any) => {
+  return Object.keys(object).find((key) => object[key] === value);
+};
+
 export default function Home() {
-  const [buildingData, setBuildingData] = useState<any>([]);
-  const [doneFlag, setDoneFlag] = useState(false); // for infinite scroll
-  const [pageNum, setPageNum] = useState(1);
+  // const [buildingData, setBuildingData] = useState<any>([]);
+  // const [doneFlag, setDoneFlag] = useState(false); // for infinite scroll
+  // const [pageNum, setPageNum] = useState(1);
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
   const mapRef = useRef<any>(null);
   const sidebarSortState = useRecoilValue(sidebarSort);
   const [selectedBuilding, setSelectedBuilding] =
     useRecoilState(buildingOnView);
   const markersRef = useRef<any>([]);
+
+  const [filterData, setFilterData] = useState([]);
 
   useEffect(() => {
     const kakaoMapScript = document.createElement("script");
@@ -74,65 +82,71 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    let isCancelled = false;
+    if (sidebarID === null) return;
 
-    if (doneFlag) return;
-
-    fetcher
-      .get(`rstate/?page=${pageNum}`)
-      .then((res) => {
-        if (isCancelled) return;
-
-        if (res.data.data.length === 0) {
-          setPageNum(-1);
-          setDoneFlag(true);
-          console.log("total building data num: ", buildingData.length);
-        } else {
-          setBuildingData((prev: any) => [...prev, ...res.data.data]);
-          setPageNum((prev) => prev + 1);
-        }
-      })
-      .catch((err) => {
-        if (isCancelled) return;
-
-        console.log(err);
-        setPageNum(-1);
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [pageNum]);
+    const chosen = selectedBuilding.find(
+      (sb: IApiData) => sb.rstate.id === sidebarID
+    )!;
+    if (chosen && mapRef.current) {
+      const position = new window.kakao.maps.LatLng(
+        chosen.rstate.articleDetail_latitude,
+        chosen.rstate.articleDetail_longitude - 0.0025
+      );
+      console.log("position", position);
+      mapRef.current.setCenter(position);
+      mapRef.current.setLevel(3);
+      //set zoom level to 3
+    }
+  }, [sidebarID]);
 
   useEffect(() => {
-    const clearMarkers = () => {
-      markersRef.current.forEach((marker: any) => {
-        marker.setMap(null);
+    fetcher
+      .get(
+        `rstate?${getKeyByValue(SortValues, sidebarSortState.value)}_top_n=2000`
+      )
+      .then((res) => {
+        console.log(res.data.data);
+        setSelectedBuilding(res.data.data);
+      })
+      .catch((err) => {
+        console.log(err);
       });
-      markersRef.current = [];
-    };
-    const sortedBuilding = buildingData.sort((a: any, b: any) => {
-      if (sidebarSortState.value === "건물 면적") {
-        return -a.articleAddition_area1 + b.articleAddition_area1;
-      } else if (sidebarSortState.value === "연면적") {
-        return -a.lndpclAr + b.lndpclAr;
-      } else if (sidebarSortState.value === "토지 가격") {
-        return -a.articlePrice_dealPrice + b.articlePrice_dealPrice;
-      } else if (sidebarSortState.value === "자기 투자 금액") {
-        return -a.selfInvestmentPrice + b.selfInvestmentPrice;
-      } else if (sidebarSortState.value === "수익률") {
-        return -a.profitRate + b.profitRate;
-      }
-    });
-    console.log(sidebarSortState.value, sortedBuilding.slice(0, 200));
-    setSelectedBuilding(sortedBuilding.slice(0, 200));
 
-    if (buildingData.length > 0 && mapRef.current) {
+    return () => {};
+  }, [sidebarSortState.value]);
+
+  const handleMapChangetoDistrict = () => {
+    if (window.kakao) {
+      const MAP_DISTRICT = window.kakao.maps.MapTypeId.USE_DISTRICT;
+      const MAP_ROAD = window.kakao.maps.MapTypeId.ROADMAP;
+      mapRef.current.removeOverlayMapTypeId(MAP_ROAD);
+      mapRef.current.addOverlayMapTypeId(MAP_DISTRICT);
+    }
+  };
+
+  const handleMapChangetoRoad = () => {
+    if (window.kakao) {
+      const MAP_DISTRICT = window.kakao.maps.MapTypeId.USE_DISTRICT;
+      const MAP_ROAD = window.kakao.maps.MapTypeId.ROADMAP;
+      mapRef.current.removeOverlayMapTypeId(MAP_DISTRICT);
+      mapRef.current.addOverlayMapTypeId(MAP_ROAD);
+    }
+  };
+
+  const clearMarkers = () => {
+    markersRef.current.forEach((marker: any) => {
+      marker.setMap(null);
+    });
+    markersRef.current = [];
+  };
+
+  useEffect(() => {
+    if (selectedBuilding.length > 0 && mapRef.current) {
       clearMarkers();
-      buildingData.slice(0, 200).forEach((building: any) => {
+      selectedBuilding.slice(0, 500).forEach((building: IApiData) => {
         const position = new window.kakao.maps.LatLng(
-          building.articleDetail_latitude,
-          building.articleDetail_longitude
+          building.rstate.articleDetail_latitude,
+          building.rstate.articleDetail_longitude
         );
 
         const marker = new window.kakao.maps.Marker({
@@ -141,7 +155,7 @@ export default function Home() {
         });
 
         const infowindow = new window.kakao.maps.InfoWindow({
-          content: `<div style="width:150px;text-align:center;padding:6px 0;">${building.articleDetail_exposureAddress}</div>`,
+          content: `<div style="width:150px;text-align:center;padding:6px 0;">${building.rstate.articleDetail_exposureAddress}</div>`,
         });
 
         window.kakao.maps.event.addListener(marker, "mouseover", function () {
@@ -151,12 +165,12 @@ export default function Home() {
           infowindow.close();
         });
         window.kakao.maps.event.addListener(marker, "click", function () {
-          setSidebarID(building.id);
+          setSidebarID(building.rstate.id);
         });
         markersRef.current.push(marker);
       });
     }
-  }, [doneFlag, sidebarSortState]);
+  }, [selectedBuilding]);
 
   return (
     <>
@@ -167,13 +181,13 @@ export default function Home() {
           id="map"
           className="w-full h-full"
         />
-        <div className="absolute right-4 top-4 gap-2 flex flex-row z-50">
+        <div className="absolute max-w-[50vw] overflow-x-scroll right-4 top-4 gap-2 flex flex-row z-50">
           {Object.entries(FilterValues).map(([key, value]) => (
             <div
               key={key}
-              className="bg-white shadow-md rounded-3xl px-4 py-1 flex gap-2 border text-gray-400"
+              className="bg-white flex-shrink-0 shadow-md rounded-3xl px-4 py-1 flex gap-2 border text-gray-400"
             >
-              {value}
+              {value.label}
               <Image
                 src={arrowDownSvg}
                 alt="arrowDown"
@@ -182,6 +196,20 @@ export default function Home() {
               />
             </div>
           ))}
+        </div>
+        <div className="absolute right-4 bottom-4 z-50 flex flex-row gap-2">
+          <div
+            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center"
+            onClick={handleMapChangetoDistrict}
+          >
+            지적편집도
+          </div>
+          <div
+            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center"
+            onClick={handleMapChangetoRoad}
+          >
+            일반지도
+          </div>
         </div>
       </main>
     </>
