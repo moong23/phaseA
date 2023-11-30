@@ -84,7 +84,7 @@ export default function Home() {
   useEffect(() => {
     if (sidebarID === null) return;
 
-    const chosen = selectedBuilding.find(
+    const chosen: any = selectedBuilding.find(
       (sb: IApiData) => sb.rstate.id === sidebarID
     )!;
     if (chosen && mapRef.current) {
