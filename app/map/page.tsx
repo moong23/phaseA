@@ -264,7 +264,9 @@ export default function Home() {
             building.rstate.articleDetail_longitude
           );
 
-          const content = `<div class='custom-dot-marker'></div>`;
+          const content = document.createElement("div");
+          content.className = "custom-dot-marker";
+
           const customOverlay = new window.kakao.maps.CustomOverlay({
             position: position,
             content: content,
@@ -274,15 +276,18 @@ export default function Home() {
             yAnchor: 1, // Bottom of the overlay
           });
 
+          content.addEventListener("click", () => {
+            setSidebarID(building.rstate.id);
+          });
           customOverlay.setMap(mapRef.current);
 
-          window.kakao.maps.event.addListener(
-            customOverlay,
-            "click",
-            function () {
-              setSidebarID(building.rstate.id);
-            }
-          );
+          // window.kakao.maps.event.addListener(
+          //   customOverlay,
+          //   "click",
+          //   function () {
+          //     setSidebarID(building.rstate.id);
+          //   }
+          // );
         });
       } else {
         renderBuilding.forEach((building: IApiData) => {

@@ -47,6 +47,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background-color: skyblue;
   border-radius: 50%;
   border: 1px solid white;
+  cursor: pointer;
 }
 .custom-marker-content {
   min-width: 160px;
