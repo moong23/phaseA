@@ -24,3 +24,48 @@ img {
   user-select: none;
   -webkit-user-drag: none;
 }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* .custom-marker-container:after {
+  border-top: 10px solid skyblue;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 0 solid transparent;
+  content: "";
+  position: absolute;
+  top: 0px;
+  left: 80px;
+} */
+
+.custom-dot-marker {
+  width: 10px;
+  height: 10px;
+  background-color: skyblue;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+.custom-marker-content {
+  min-width: 160px;
+  height: 100px; /* Adjusted from h-16 to a specific pixel value for CSS */
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid grey;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+  text-overflow: ellipsis;
+  position: absolute;
+  top: -70px;
+}
+
+.profit_rate {
+  color: black;
+  font-weight: 700;
+}

@@ -9,7 +9,7 @@ const ResultCard = ({
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   type?: number;
 }) => {
-  return (
+  return buildingData ? (
     <div
       onClick={onClick}
       className="w-[400px] flex flex-row justify-between cursor-pointer"
@@ -29,7 +29,11 @@ const ResultCard = ({
             {buildingData.rstate.articleDetail_sectionName}
           </div>
           <div className="text-xl font-semibold">
-            수익률 {buildingData.rstate_calculate.profit_rate}
+            수익률{" "}
+            {buildingData.rstate_calculate.profit_rate
+              ? buildingData.rstate_calculate.profit_rate.toFixed(1)
+              : ""}
+            %
           </div>
         </div>
         {type === 1 && (
@@ -41,6 +45,8 @@ const ResultCard = ({
 
       <div className="w-24 h-24 bg-gray-400 my-2"></div>
     </div>
+  ) : (
+    <></>
   );
 };
 
