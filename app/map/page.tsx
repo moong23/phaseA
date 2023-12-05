@@ -47,6 +47,8 @@ export default function Home() {
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
   const mapRef = useRef<any>(null);
   const sidebarSortState = useRecoilValue(sidebarSort);
+  const customOverlaysRef = useRef<any>([]);
+
   const [selectedBuilding, setSelectedBuilding] =
     useRecoilState(buildingOnView);
   const markersRef = useRef<any>([]);
@@ -221,6 +223,10 @@ export default function Home() {
       marker.setMap(null);
     });
     markersRef.current = [];
+    customOverlaysRef.current.forEach((overlay: any) => {
+      overlay.setMap(null); // Remove the overlay from the map
+    });
+    customOverlaysRef.current = [];
   };
 
   useEffect(() => {
@@ -275,6 +281,7 @@ export default function Home() {
             xAnchor: 0.5, // Center of the overlay horizontally
             yAnchor: 1, // Bottom of the overlay
           });
+          customOverlaysRef.current.push(customOverlay);
 
           content.addEventListener("click", () => {
             setSidebarID(building.rstate.id);
