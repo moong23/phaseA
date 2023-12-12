@@ -200,7 +200,7 @@ const MapSidebar = () => {
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articlePrice_dealPrice} */}
                         {selectedBuilidng.rstate.articlePrice_dealPrice.toLocaleString()}
-                        (천원)
+                        (만원)
                       </div>
                     </div>
                   </div>
@@ -265,7 +265,7 @@ const MapSidebar = () => {
                       <div className={`${detailLeftCls}`}>평당 토지가격</div>
                       <div className={`${detailRightCls}`}>
                         {selectedBuilidng.rstate_calculate.land_price.toLocaleString()}
-                        (천원)
+                        (만원)
                         {/* {selectedBuilidng.groundPrice} */}
                       </div>
                     </div>

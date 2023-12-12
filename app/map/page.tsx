@@ -12,6 +12,7 @@ import { buildingOnView, sidebarRecoilData, sidebarSort } from "@/state/atom";
 import { SortValues } from "@/constants/mapData";
 import { IApiData } from "@/interfaces/calcData";
 import blueDotSrc from "@/assets/dot.png";
+import axios from "axios";
 
 type FilterValueType = {
   label: string;
@@ -29,6 +30,24 @@ type FilterValuesType = {
 type ApiResponseType = {
   [key: string]: any[]; // Replace 'any[]' with more specific types as needed
 };
+
+interface IBody {
+  sorting: {
+    sorting_type: string;
+    top_n: number;
+  };
+  filters: {
+    articleName_filter: string[];
+    lndpclAr_filter: number[];
+    articlePrice_filter: number[];
+    proposArea1Nm_filter: string[];
+    roadSideCodeNm_filter: string[];
+    floor_area_ratio_filter: number[];
+    personal_investment_amount_filter: number[];
+    land_price_filter: number[];
+    profit_rate_filter: number[];
+  };
+}
 
 const INITIAL_MAP_POSITION = {
   lat: 37.532199,
@@ -48,9 +67,10 @@ export default function Home() {
   const mapRef = useRef<any>(null);
   const sidebarSortState = useRecoilValue(sidebarSort);
   const customOverlaysRef = useRef<any>([]);
+  const pageNumber = useRef(1);
 
   const [selectedBuilding, setSelectedBuilding] =
-    useRecoilState(buildingOnView);
+    useRecoilState<any>(buildingOnView);
   const markersRef = useRef<any>([]);
   const [mapBounds, setMapBounds] = useState({
     sw: { lat: 0, lng: 0 },
@@ -162,23 +182,20 @@ export default function Home() {
     if (chosen && mapRef.current) {
       const position = new window.kakao.maps.LatLng(
         chosen.rstate.articleDetail_latitude,
-        chosen.rstate.articleDetail_longitude - 0.0025
+        // chosen.rstate.articleDetail_longitude - 0.0025
+        chosen.rstate.articleDetail_longitude - 0.0007
       );
 
       mapRef.current.setCenter(position);
-      mapRef.current.setLevel(3);
+      mapRef.current.setLevel(1);
       //set zoom level to 3
     }
   }, [sidebarID]);
 
-  useEffect(() => {
+  const getApiData = async (pageNum: number, body?: IBody) => {
     fetcher
-      .post(`rstate?page=1&items_per_page=2000`, {
-        sorting: {
-          sorting_type: getKeyByValue(SortValues, sidebarSortState.value),
-          top_n: 200,
-        },
-        filters: {
+      .post(`rstate?page=${pageNum}&items_per_page=4000`, {
+        filters: body?.filters || {
           articleName_filter: [],
           lndpclAr_filter: [],
           articlePrice_filter: [],
@@ -189,15 +206,18 @@ export default function Home() {
           land_price_filter: [],
           profit_rate_filter: [],
         },
+        sorting: body?.sorting || {
+          sorting_type: getKeyByValue(SortValues, sidebarSortState.value)!,
+          top_n: 1000000,
+        },
       })
       .then((res) => {
         setSelectedBuilding(res.data.data);
-      })
-      .catch((err) => {
-        console.log(err);
       });
+  };
 
-    return () => {};
+  useEffect(() => {
+    getApiData(1);
   }, [sidebarSortState.value]);
 
   const handleMapChangetoDistrict = () => {
@@ -232,118 +252,128 @@ export default function Home() {
   useEffect(() => {
     if (selectedBuilding.length > 0 && mapRef.current) {
       clearMarkers();
-      console.log(mapBounds.sw.lat, mapBounds.ne.lat);
-      const renderBuilding: IApiData[] = selectedBuilding.filter(
-        (building: IApiData) => {
-          if (
-            building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
-            building.rstate.articleDetail_latitude > mapBounds.ne.lat
-          )
-            return false;
+      if (mapRef.current.getLevel() < 7) {
+        console.log(mapBounds.sw.lat, mapBounds.ne.lat);
+        const renderBuilding: IApiData[] = selectedBuilding.filter(
+          (building: IApiData) => {
+            if (
+              building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
+              building.rstate.articleDetail_latitude > mapBounds.ne.lat
+            )
+              return false;
 
-          if (
-            building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
-            building.rstate.articleDetail_longitude > mapBounds.ne.lng
-          )
-            return false;
+            if (
+              building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
+              building.rstate.articleDetail_longitude > mapBounds.ne.lng
+            )
+              return false;
 
-          return true;
+            return true;
+          }
+        );
+        console.log(renderBuilding, mapRef.current.getLevel());
+        if (7 > mapRef.current.getLevel() && mapRef.current.getLevel() > 4) {
+          renderBuilding.forEach((building: IApiData) => {
+            if (
+              building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
+              building.rstate.articleDetail_latitude > mapBounds.ne.lat
+            )
+              return;
+
+            if (
+              building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
+              building.rstate.articleDetail_longitude > mapBounds.ne.lng
+            )
+              return;
+
+            const position = new window.kakao.maps.LatLng(
+              building.rstate.articleDetail_latitude,
+              building.rstate.articleDetail_longitude
+            );
+
+            const content = document.createElement("div");
+            content.className = "custom-dot-marker";
+
+            const customOverlay = new window.kakao.maps.CustomOverlay({
+              position: position,
+              content: content,
+              map: mapRef.current,
+              // Optional: specify the x and y offset of the overlay in relation to the position
+              xAnchor: 0.5, // Center of the overlay horizontally
+              yAnchor: 1, // Bottom of the overlay
+            });
+            customOverlaysRef.current.push(customOverlay);
+
+            content.addEventListener("click", () => {
+              setSidebarID(building.rstate.id);
+            });
+            customOverlay.setMap(mapRef.current);
+
+            // window.kakao.maps.event.addListener(
+            //   customOverlay,
+            //   "click",
+            //   function () {
+            //     setSidebarID(building.rstate.id);
+            //   }
+            // );
+          });
+        } else if (mapRef.current.getLevel() <= 4) {
+          renderBuilding.forEach((building: IApiData) => {
+            if (
+              building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
+              building.rstate.articleDetail_latitude > mapBounds.ne.lat
+            )
+              return;
+
+            if (
+              building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
+              building.rstate.articleDetail_longitude > mapBounds.ne.lng
+            )
+              return;
+
+            const position = new window.kakao.maps.LatLng(
+              building.rstate.articleDetail_latitude,
+              building.rstate.articleDetail_longitude
+            );
+            const marker = new window.kakao.maps.Marker({
+              position,
+              map: mapRef.current,
+            });
+
+            const infowindow = new window.kakao.maps.InfoWindow({
+              content: `<div class="custom-marker-container"><div class="custom-marker-content"><div>${
+                building.rstate.articleDetail_articleName
+              }</div><div>${
+                building.rstate.articleDetail_exposureAddress
+              }</div><div class='profit_rate'>${
+                building.rstate_calculate.profit_rate
+                  ? building.rstate_calculate.profit_rate.toFixed(1)
+                  : ""
+              }%</div></div></div>`,
+            });
+
+            window.kakao.maps.event.addListener(
+              marker,
+              "mouseover",
+              function () {
+                infowindow.open(mapRef.current, marker);
+              }
+            );
+            window.kakao.maps.event.addListener(
+              marker,
+              "mouseout",
+              function () {
+                setTimeout(() => {
+                  infowindow.close();
+                }, 3000);
+              }
+            );
+            window.kakao.maps.event.addListener(marker, "click", function () {
+              setSidebarID(building.rstate.id);
+            });
+            markersRef.current.push(marker);
+          });
         }
-      );
-      console.log(renderBuilding, mapRef.current.getLevel());
-      if (renderBuilding.length > 20 || mapRef.current.getLevel() > 7) {
-        renderBuilding.forEach((building: IApiData) => {
-          if (
-            building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
-            building.rstate.articleDetail_latitude > mapBounds.ne.lat
-          )
-            return;
-
-          if (
-            building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
-            building.rstate.articleDetail_longitude > mapBounds.ne.lng
-          )
-            return;
-
-          const position = new window.kakao.maps.LatLng(
-            building.rstate.articleDetail_latitude,
-            building.rstate.articleDetail_longitude
-          );
-
-          const content = document.createElement("div");
-          content.className = "custom-dot-marker";
-
-          const customOverlay = new window.kakao.maps.CustomOverlay({
-            position: position,
-            content: content,
-            map: mapRef.current,
-            // Optional: specify the x and y offset of the overlay in relation to the position
-            xAnchor: 0.5, // Center of the overlay horizontally
-            yAnchor: 1, // Bottom of the overlay
-          });
-          customOverlaysRef.current.push(customOverlay);
-
-          content.addEventListener("click", () => {
-            setSidebarID(building.rstate.id);
-          });
-          customOverlay.setMap(mapRef.current);
-
-          // window.kakao.maps.event.addListener(
-          //   customOverlay,
-          //   "click",
-          //   function () {
-          //     setSidebarID(building.rstate.id);
-          //   }
-          // );
-        });
-      } else {
-        renderBuilding.forEach((building: IApiData) => {
-          if (
-            building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
-            building.rstate.articleDetail_latitude > mapBounds.ne.lat
-          )
-            return;
-
-          if (
-            building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
-            building.rstate.articleDetail_longitude > mapBounds.ne.lng
-          )
-            return;
-
-          const position = new window.kakao.maps.LatLng(
-            building.rstate.articleDetail_latitude,
-            building.rstate.articleDetail_longitude
-          );
-          const marker = new window.kakao.maps.Marker({
-            position,
-            map: mapRef.current,
-          });
-
-          const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div class="custom-marker-container"><div class="custom-marker-content"><div>${
-              building.rstate.articleDetail_articleName
-            }</div><div>${
-              building.rstate.articleDetail_exposureAddress
-            }</div><div class='profit_rate'>${
-              building.rstate_calculate.profit_rate
-                ? building.rstate_calculate.profit_rate.toFixed(1)
-                : ""
-            }%</div></div></div>`,
-          });
-
-          window.kakao.maps.event.addListener(marker, "mouseover", function () {
-            infowindow.open(mapRef.current, marker);
-          });
-          window.kakao.maps.event.addListener(marker, "mouseout", function () {
-            setTimeout(() => {
-              infowindow.close();
-            }, 3000);
-          });
-          window.kakao.maps.event.addListener(marker, "click", function () {
-            setSidebarID(building.rstate.id);
-          });
-          markersRef.current.push(marker);
-        });
       }
     }
   }, [selectedBuilding, mapBounds]);
@@ -398,27 +428,11 @@ export default function Home() {
 
   useEffect(() => {
     if (mapRef.current === null) return;
-    interface IBody {
-      sorting: {
-        sorting_type: string;
-        top_n: number;
-      };
-      filters: {
-        articleName_filter: string[];
-        lndpclAr_filter: number[];
-        articlePrice_filter: number[];
-        proposArea1Nm_filter: string[];
-        roadSideCodeNm_filter: string[];
-        floor_area_ratio_filter: number[];
-        personal_investment_amount_filter: number[];
-        land_price_filter: number[];
-        profit_rate_filter: number[];
-      };
-    }
+
     let body: IBody = {
       sorting: {
         sorting_type: getKeyByValue(SortValues, sidebarSortState.value)!,
-        top_n: 200,
+        top_n: 1000000,
       },
       filters: {
         articleName_filter: [],
@@ -484,7 +498,7 @@ export default function Home() {
     console.log(body);
 
     fetcher
-      .post(`rstate?page=1&items_per_page=200`, {
+      .post(`rstate?page=1&items_per_page=4000`, {
         filters: body.filters,
         sorting: body.sorting,
       })
