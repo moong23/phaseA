@@ -9,7 +9,12 @@ import { ICardBuildingData } from "@/interfaces/sidebar";
 import { SortValues } from "@/constants/mapData";
 import { dummyBuildingData } from "@/dummy/dummyBuilding";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { buildingOnView, sidebarRecoilData, sidebarSort } from "@/state/atom";
+import {
+  buildingInMap,
+  buildingOnView,
+  sidebarRecoilData,
+  sidebarSort,
+} from "@/state/atom";
 import { fetcher } from "@/api/fetcher";
 import { IApiData, IApiIndivData } from "@/interfaces/calcData";
 
@@ -17,13 +22,18 @@ const detailLine = "w-full flex flex-row gap-6";
 const detailLeftCls = "font-semibold whitespace-nowrap";
 const detailRightCls = "font-normal text-gray-400 whitespace-nowrap";
 
-const MapSidebar = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+interface ISidebarProps {
+  resetFilterData: () => void;
+}
+
+const MapSidebar = ({ resetFilterData }: ISidebarProps) => {
   const [sidebarType, setSidebarType] = useState(0);
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
   const buildingData = useRecoilValue(buildingOnView);
   const [selectedBuilidng, setSelectedBuilding] = useState<IApiIndivData>();
+  const buildingMap = useRecoilValue(buildingInMap);
   const [sortStatus, setSortStatus] = useRecoilState(sidebarSort);
+  const [lastUpdate, setLastUpdate] = useState("");
 
   const handleSortChange = (e: React.MouseEvent<HTMLDivElement>) => {
     const targetText = e.currentTarget.innerText;
@@ -46,16 +56,26 @@ const MapSidebar = () => {
     setSidebarType((prev) => 1 - prev);
   };
 
+  const resetFilter = () => {
+    resetFilterData();
+  };
   useEffect(() => {
     if (sidebarID === -1) return;
 
-    setSidebarOpen(true);
     setSidebarType(1);
     fetcher.get(`rstate/${sidebarID}`).then((res) => {
       console.log(res.data);
       setSelectedBuilding(res.data);
     });
   }, [sidebarID]);
+
+  useEffect(() => {
+    console.log("lu");
+    fetcher.get(`rstate/last_update/`).then((res) => {
+      console.log("lu", res.data);
+      setLastUpdate(res.data.last_update);
+    });
+  }, []);
 
   return (
     <>
@@ -64,74 +84,97 @@ const MapSidebar = () => {
           border: none;
         }
       `}</style>
-      {sidebarOpen && (
-        <aside className="h-full min-w-[529px] border-r border-r-gray-400 bg-white absolute left-0 z-30 pt-[120px] px-16 shadow-lg flex flex-col">
+      {
+        <aside
+          className={`${
+            sidebarType === 0 ? "w-[400px]" : "w-fit"
+          } h-full  flex-shrink-0 border-r border-r-gray-400 bg-white absolute left-0 z-30 pt-10 px-16 shadow-lg flex flex-col`}
+        >
+          {lastUpdate !== "" && (
+            <div className="text-lg font-semibold mb-10">
+              데이터 업데이트: {lastUpdate}
+            </div>
+          )}
           {sidebarType === 0 ? (
-            <>
-              <div className="flex flex-row gap-2 items-center">
-                <div
-                  className="font-semibold cursor-pointer "
-                  onClick={() =>
-                    setSortStatus((prev) => ({
-                      ...prev,
-                      status: !prev.status,
-                    }))
-                  }
+            buildingMap.length === 0 ? (
+              <div className="flex flex-col gap-4">
+                <span>지도에 표시되는 데이터가 없습니다.</span>
+                <button
+                  className="w-full h-12 bg-red-200 rounded-2xl "
+                  onClick={() => resetFilter()}
                 >
-                  Sort by
+                  필터 초기화
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-row gap-2 items-center ">
+                  <div
+                    className="font-semibold cursor-pointer "
+                    onClick={() =>
+                      setSortStatus((prev) => ({
+                        ...prev,
+                        status: !prev.status,
+                      }))
+                    }
+                  >
+                    Sort by
+                  </div>
+                  <Image
+                    className="cursor-pointer "
+                    src={foldDownSvg}
+                    alt="arrow Icon"
+                    width={16}
+                    height={16}
+                    onClick={() =>
+                      setSortStatus((prev) => ({
+                        ...prev,
+                        status: !prev.status,
+                      }))
+                    }
+                  />
+                  {sortStatus.value !== "" && (
+                    <div className="px-2 bg-slate-200 rounded-md py-1 ml-4">
+                      {sortStatus.value}
+                    </div>
+                  )}
                 </div>
-                <Image
-                  className="cursor-pointer "
-                  src={foldDownSvg}
-                  alt="arrow Icon"
-                  width={16}
-                  height={16}
-                  onClick={() =>
-                    setSortStatus((prev) => ({
-                      ...prev,
-                      status: !prev.status,
-                    }))
-                  }
-                />
-                {sortStatus.value !== "" && (
-                  <div className="px-2 bg-slate-200 rounded-md py-1 ml-4">
-                    {sortStatus.value}
+                {sortStatus.status && (
+                  <div className="absolute mt-8 w-[200px] p-4 rounded-xl bg-white z-40 flex flex-col gap-2 shadow-md">
+                    {Object.entries(SortValues).map(([key, value]) => (
+                      <div
+                        key={key}
+                        data-key={key}
+                        className="w-full h-8 flex flex-row items-center px-4 rounded-md hover:bg-gray-100 "
+                        onClick={handleSortChange}
+                      >
+                        {value}
+                      </div>
+                    ))}
                   </div>
                 )}
-              </div>
-              {sortStatus.status && (
-                <div className="absolute mt-8 w-[200px] p-4 rounded-xl bg-white z-40 flex flex-col gap-2 shadow-md">
-                  {Object.entries(SortValues).map(([key, value]) => (
-                    <div
-                      key={key}
-                      data-key={key}
-                      className="w-full h-8 flex flex-row items-center px-4 rounded-md hover:bg-gray-100 "
-                      onClick={handleSortChange}
-                    >
-                      {value}
-                    </div>
-                  ))}
+                <div className="w-1 h-8" />
+                <div
+                  id="cardArea"
+                  className="h-full flex flex-col overflow-y-scroll gap-3 overflow-x-hidden"
+                >
+                  {buildingMap.map((building: IApiData) => {
+                    return (
+                      <div key={building.rstate.id}>
+                        <ResultCard
+                          buildingData={building}
+                          onClick={() => handleCardClick(building.rstate.id)}
+                        />
+                        <div
+                          id="borderLine"
+                          className="w-full h-[1px] border border-gray-200 mt-3"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-              <div className="w-1 h-8" />
-              <div
-                id="cardArea"
-                className="h-full flex flex-col overflow-y-scroll gap-3"
-              >
-                {buildingData.map((building: IApiData) => (
-                  <div key={building.rstate.id}>
-                    <ResultCard
-                      buildingData={building}
-                      onClick={() => handleCardClick(building.rstate.id)}
-                    />
-                    <div
-                      id="borderLine"
-                      className="w-full h-[1px] border border-gray-200 mt-3"
-                    />
-                  </div>
-                ))}
-              </div>
-            </>
+              </>
+            )
           ) : (
             selectedBuilidng && (
               <div className="w-full flex flex-col">
@@ -275,7 +318,10 @@ const MapSidebar = () => {
                       <div className="basis-2/5 flex flex-row gap-6">
                         <div className={`${detailLeftCls}`}>자기투자금액</div>
                         <div className={`${detailRightCls}`}>
-                          {selectedBuilidng.rstate_calculate.personal_investment_amount.toLocaleString()}
+                          {(
+                            selectedBuilidng.rstate_calculate
+                              .personal_investment_amount || 0
+                          ).toLocaleString()}
                           (천원)
                           {/* {selectedBuilidng.selfInvestmentPrice}(천원) */}
                         </div>
@@ -287,20 +333,7 @@ const MapSidebar = () => {
             )
           )}
         </aside>
-      )}
-      <div
-        className={`${sidebarOpen ? "ml-[529px]" : "ml-0"} 
-      absolute w-12 h-20 bg-white top-1/2 z-20 border border-black border-l-0 rounded-r-lg shadow-md translate-y-[-50%] flex items-center justify-center cursor-pointer`}
-        onClick={() => setSidebarOpen((prev) => !prev)}
-      >
-        <Image
-          src={foldLeftSvg}
-          alt="foldIcon"
-          width={36}
-          height={36}
-          className={`${!sidebarOpen ? "transform rotate-180" : ""}`}
-        />
-      </div>
+      }
     </>
   );
 };

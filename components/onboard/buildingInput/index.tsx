@@ -38,6 +38,7 @@ const BuildingInput = () => {
   useEffect(() => {
     console.log(calcData);
   }, [calcData]);
+
   return (
     <div className="w-auto flex flex-col gap-12 pb-12">
       <div className="w-full flex justify-between">

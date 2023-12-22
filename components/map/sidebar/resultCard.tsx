@@ -12,7 +12,7 @@ const ResultCard = ({
   return buildingData ? (
     <div
       onClick={onClick}
-      className="w-[400px] flex flex-row justify-between cursor-pointer"
+      className="w-[250px] flex flex-row justify-between cursor-pointer"
     >
       <div className="h-24 flex-shrink-0 flex flex-col gap-2">
         <div className="flex flex-row gap-2 items-center">
@@ -30,10 +30,12 @@ const ResultCard = ({
           </div>
           <div className="text-xl font-semibold">
             수익률{" "}
-            {buildingData.rstate_calculate.profit_rate
-              ? buildingData.rstate_calculate.profit_rate.toFixed(1)
+            {buildingData.rstate_calculate
+              ? typeof (buildingData.rstate_calculate.profit_rate || "-") ===
+                "number"
+                ? buildingData.rstate_calculate.profit_rate.toFixed(1) + "%"
+                : "-"
               : ""}
-            %
           </div>
         </div>
         {type === 1 && (
@@ -42,8 +44,6 @@ const ResultCard = ({
           </div>
         )}
       </div>
-
-      <div className="w-24 h-24 bg-gray-400 my-2"></div>
     </div>
   ) : (
     <></>

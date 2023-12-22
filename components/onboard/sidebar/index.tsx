@@ -4,9 +4,10 @@ import { ICalcData } from "@/interfaces/calcData";
 import { calcRecoilData } from "@/state/atom";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import checkSrc from "@/assets/Group 10599.svg";
 import { useRouter } from "next/navigation";
+import { fetcher } from "@/api/fetcher";
 
 const Button = ({
   disabled,
@@ -29,9 +30,15 @@ const Button = ({
 };
 
 const OnBoardSidebar = () => {
-  const calcData = useRecoilValue(calcRecoilData);
+  const [calcData, setCalcData] = useRecoilState(calcRecoilData);
   const [progress, setProgress] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    fetcher.get(`profit/variable`).then((res) => {
+      // setCalcData(res.data);
+    });
+  }, []);
 
   useEffect(() => {
     // Define a function to count truthy values in an object recursively
@@ -56,11 +63,20 @@ const OnBoardSidebar = () => {
   const contentTitle = "text-sm font-semibold";
   const contentValue = "bg-gray-100 px-4 py-2 rounded-lg flex justify-between";
 
+  const handleClickButton = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log(calcData);
+    // router.push('/map');
+    fetcher.post("/profit/variable", calcData).then((res) => {
+      // setCalcData(res.data);
+      console.log(res.data);
+    });
+  };
+
   return (
     <div className="w-[320px] flex flex-col gap-3.5">
       <Button
         disabled={progress !== 11}
-        onClick={() => router.push("/map")}
+        onClick={handleClickButton}
       />
       <div className="w-full bg-white rounded-3xl flex flex-col gap-4 p-10">
         <div className="w-full flex justify-between items-center">

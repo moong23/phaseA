@@ -15,7 +15,7 @@ const MapInput = () => {
     console.log(searchVal);
   };
   return (
-    <div className="absolute flex flex-row top-8 left-16 w-[372px] h-12 z-50 bg-white rounded-lg shadow-md border px-4">
+    <div className="absolute flex flex-row top-8 left-12 w-[304px] h-12 z-50 bg-white rounded-lg shadow-md border px-4">
       <input
         placeholder="건물명, 지번, 도로명 검색"
         className="w-full h-full focus:outline-none"

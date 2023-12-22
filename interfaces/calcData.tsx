@@ -48,6 +48,7 @@ export interface IApiData {
     prposArea1Nm: string;
     tpgrphHgCodeNm: string;
     articleDetail_sectionName: string;
+    articlePrice_dealPrice: number;
   };
   rstate_calculate: {
     pnu: string;

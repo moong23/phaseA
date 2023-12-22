@@ -16,6 +16,11 @@ export const sidebarRecoilData = atom({
   default: -1,
 });
 
+export const buildingInMap = atom({
+  key: "buildingInMap",
+  default: [],
+});
+
 export const buildingOnView = atom({
   key: "buildingOnView",
   default: [],

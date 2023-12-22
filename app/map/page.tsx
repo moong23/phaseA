@@ -8,7 +8,12 @@ import MapSidebar from "@/components/map/sidebar";
 import MapInput from "@/components/map/input";
 import { fetcher } from "@/api/fetcher";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { buildingOnView, sidebarRecoilData, sidebarSort } from "@/state/atom";
+import {
+  buildingInMap,
+  buildingOnView,
+  sidebarRecoilData,
+  sidebarSort,
+} from "@/state/atom";
 import { SortValues } from "@/constants/mapData";
 import { IApiData } from "@/interfaces/calcData";
 import blueDotSrc from "@/assets/dot.png";
@@ -67,63 +72,63 @@ export default function Home() {
   const mapRef = useRef<any>(null);
   const sidebarSortState = useRecoilValue(sidebarSort);
   const customOverlaysRef = useRef<any>([]);
-  const pageNumber = useRef(1);
-
+  const [loadDone, setLoadDone] = useState(false);
+  const [filterData, setFilterData] = useState<FilterValuesType>(FilterValues);
   const [selectedBuilding, setSelectedBuilding] =
     useRecoilState<any>(buildingOnView);
+  const [buildingMap, setBuildingMap] = useRecoilState<any>(buildingInMap);
+
   const markersRef = useRef<any>([]);
   const [mapBounds, setMapBounds] = useState({
     sw: { lat: 0, lng: 0 },
     ne: { lat: 0, lng: 0 },
   });
 
-  const [filterData, setFilterData] = useState<FilterValuesType>(FilterValues);
+  const getFilterData = async () => {
+    try {
+      const filterApi = await fetcher.get("rstate/filter_option/");
+      const filterApiData: ApiResponseType = filterApi.data.data;
+
+      const updatedFilterData: FilterValuesType = { ...filterData };
+
+      Object.entries(updatedFilterData).forEach(([key, value]) => {
+        if (value.type === "text") {
+          let apiListKey = "";
+          if (key === "prposArea1Nm") {
+            apiListKey = `proposArea1Nm_list`;
+          } else {
+            apiListKey = `${key}_list`;
+          }
+          if (Array.isArray(filterApiData[apiListKey])) {
+            updatedFilterData[key].initialValue = filterApiData[apiListKey];
+            updatedFilterData[key].value = filterApiData[apiListKey];
+          }
+        } else if (value.type === "number") {
+          const apiNumberData = filterApiData[key];
+          if (Array.isArray(apiNumberData) && apiNumberData.length > 0) {
+            updatedFilterData[key].initialValue = {
+              min: Math.min(...apiNumberData),
+              max: Math.max(...apiNumberData),
+            };
+            updatedFilterData[key].value = {
+              min: Math.min(...apiNumberData),
+              max: Math.max(...apiNumberData),
+            };
+          }
+        }
+      });
+
+      setFilterData(updatedFilterData);
+    } catch (error) {
+      console.error("Error fetching filter data:", error);
+    }
+  };
 
   useEffect(() => {
     const kakaoMapScript = document.createElement("script");
     kakaoMapScript.async = false;
     kakaoMapScript.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=7d7a1d63a24ac8006105cfc4f1595c5c&autoload=false`;
     document.head.appendChild(kakaoMapScript);
-
-    const getFilterData = async () => {
-      try {
-        const filterApi = await fetcher.get("rstate/filter_option/");
-        const filterApiData: ApiResponseType = filterApi.data.data;
-
-        const updatedFilterData: FilterValuesType = { ...filterData };
-
-        Object.entries(updatedFilterData).forEach(([key, value]) => {
-          if (value.type === "text") {
-            let apiListKey = "";
-            if (key === "prposArea1Nm") {
-              apiListKey = `proposArea1Nm_list`;
-            } else {
-              apiListKey = `${key}_list`;
-            }
-            if (Array.isArray(filterApiData[apiListKey])) {
-              updatedFilterData[key].initialValue = filterApiData[apiListKey];
-              updatedFilterData[key].value = filterApiData[apiListKey];
-            }
-          } else if (value.type === "number") {
-            const apiNumberData = filterApiData[key];
-            if (Array.isArray(apiNumberData) && apiNumberData.length > 0) {
-              updatedFilterData[key].initialValue = {
-                min: Math.min(...apiNumberData),
-                max: Math.max(...apiNumberData),
-              };
-              updatedFilterData[key].value = {
-                min: Math.min(...apiNumberData),
-                max: Math.max(...apiNumberData),
-              };
-            }
-          }
-        });
-
-        setFilterData(updatedFilterData);
-      } catch (error) {
-        console.error("Error fetching filter data:", error);
-      }
-    };
 
     const onLoadKakaoAPI = () => {
       if (window.kakao) {
@@ -194,7 +199,7 @@ export default function Home() {
 
   const getApiData = async (pageNum: number, body?: IBody) => {
     fetcher
-      .post(`rstate?page=${pageNum}&items_per_page=4000`, {
+      .post(`rstate?page=${pageNum}&items_per_page=1000`, {
         filters: body?.filters || {
           articleName_filter: [],
           lndpclAr_filter: [],
@@ -212,13 +217,43 @@ export default function Home() {
         },
       })
       .then((res) => {
-        setSelectedBuilding(res.data.data);
+        if (res.data.data.length === 0) {
+          if (pageNum === 1) {
+            throw new Error("System Error");
+          }
+          throw new Error("No data returned from API");
+        }
+        if (pageNum === 1) {
+          setSelectedBuilding(res.data.data);
+        } else {
+          let tmp: IApiData[] = [];
+          tmp = res.data.data;
+          setSelectedBuilding((prev: IApiData[]) => [...prev, ...tmp]);
+        }
+        getApiData(pageNum + 1, body);
+      })
+      .catch((err) => {
+        console.log(err);
+        if (err.message === "No data returned from API") {
+          setLoadDone(true);
+        } else if (err.message === "System Error") {
+          setSelectedBuilding([]);
+          setLoadDone(true);
+        } else if (err.message === "Request failed with status code 400") {
+          console.log("done!");
+          setLoadDone(true);
+        }
       });
   };
 
   useEffect(() => {
     getApiData(1);
   }, [sidebarSortState.value]);
+
+  useEffect(() => {
+    console.log("api call");
+    console.log(selectedBuilding.length);
+  }, [selectedBuilding]);
 
   const handleMapChangetoDistrict = () => {
     if (window.kakao) {
@@ -271,21 +306,10 @@ export default function Home() {
             return true;
           }
         );
-        console.log(renderBuilding, mapRef.current.getLevel());
+        setBuildingMap(renderBuilding);
+
         if (7 > mapRef.current.getLevel() && mapRef.current.getLevel() > 4) {
           renderBuilding.forEach((building: IApiData) => {
-            if (
-              building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
-              building.rstate.articleDetail_latitude > mapBounds.ne.lat
-            )
-              return;
-
-            if (
-              building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
-              building.rstate.articleDetail_longitude > mapBounds.ne.lng
-            )
-              return;
-
             const position = new window.kakao.maps.LatLng(
               building.rstate.articleDetail_latitude,
               building.rstate.articleDetail_longitude
@@ -317,20 +341,11 @@ export default function Home() {
             //   }
             // );
           });
-        } else if (mapRef.current.getLevel() <= 4) {
+        } else if (
+          2 <= mapRef.current.getLevel() &&
+          mapRef.current.getLevel() <= 4
+        ) {
           renderBuilding.forEach((building: IApiData) => {
-            if (
-              building.rstate.articleDetail_latitude < mapBounds.sw.lat ||
-              building.rstate.articleDetail_latitude > mapBounds.ne.lat
-            )
-              return;
-
-            if (
-              building.rstate.articleDetail_longitude < mapBounds.sw.lng ||
-              building.rstate.articleDetail_longitude > mapBounds.ne.lng
-            )
-              return;
-
             const position = new window.kakao.maps.LatLng(
               building.rstate.articleDetail_latitude,
               building.rstate.articleDetail_longitude
@@ -340,40 +355,98 @@ export default function Home() {
               map: mapRef.current,
             });
 
-            const infowindow = new window.kakao.maps.InfoWindow({
-              content: `<div class="custom-marker-container"><div class="custom-marker-content"><div>${
-                building.rstate.articleDetail_articleName
-              }</div><div>${
-                building.rstate.articleDetail_exposureAddress
-              }</div><div class='profit_rate'>${
-                building.rstate_calculate.profit_rate
-                  ? building.rstate_calculate.profit_rate.toFixed(1)
-                  : ""
-              }%</div></div></div>`,
+            const content = document.createElement("div");
+            content.className = "custom-marker-container";
+            content.innerHTML = `
+              <div class="custom-marker-content">
+                <div>
+                  ${building.rstate.articleDetail_articleName}
+                </div>
+                <div>
+                ${building.rstate.articlePrice_dealPrice.toLocaleString()} 만원
+                </div>
+                <div class='profit_rate'>
+                  ${
+                    building.rstate_calculate.profit_rate
+                      ? building.rstate_calculate.profit_rate.toFixed(1) + "%"
+                      : "-"
+                  }
+                </div>
+              </div>
+            `;
+            const customOverlay = new window.kakao.maps.CustomOverlay({
+              position: position,
+              content: content,
+              map: null,
+              yAnchor: 1,
+              // Optional: specify the x and y offset of the overlay in relation to the position
             });
 
             window.kakao.maps.event.addListener(
               marker,
               "mouseover",
               function () {
-                infowindow.open(mapRef.current, marker);
+                customOverlaysRef.current.push(customOverlay);
+                customOverlay.setMap(mapRef.current);
               }
             );
-            window.kakao.maps.event.addListener(
-              marker,
-              "mouseout",
-              function () {
-                setTimeout(() => {
-                  infowindow.close();
-                }, 3000);
-              }
-            );
+            content.addEventListener("click", () => {
+              setSidebarID(building.rstate.id);
+            });
+            content.addEventListener("mouseout", () => {
+              customOverlaysRef.current.pop();
+              customOverlay.setMap(null);
+            });
+
             window.kakao.maps.event.addListener(marker, "click", function () {
               setSidebarID(building.rstate.id);
             });
             markersRef.current.push(marker);
           });
+        } else if (mapRef.current.getLevel() <= 2) {
+          renderBuilding.forEach((building: IApiData) => {
+            const position = new window.kakao.maps.LatLng(
+              building.rstate.articleDetail_latitude,
+              building.rstate.articleDetail_longitude
+            );
+
+            const content = document.createElement("div");
+            content.className = "custom-marker-container";
+            content.innerHTML = `
+            <div class="custom-marker-content">
+              <div>
+                ${building.rstate.articleDetail_articleName}
+              </div>
+              <div>
+              ${building.rstate.articlePrice_dealPrice.toLocaleString()} 만원
+              </div>
+              <div class='profit_rate'>
+                ${
+                  building.rstate_calculate.profit_rate
+                    ? building.rstate_calculate.profit_rate.toFixed(1) + "%"
+                    : "-"
+                }
+              </div>
+            </div>
+          `;
+
+            const customOverlay = new window.kakao.maps.CustomOverlay({
+              position: position,
+              content: content,
+              map: mapRef.current,
+              yAnchor: 1,
+              // Optional: specify the x and y offset of the overlay in relation to the position
+            });
+            customOverlaysRef.current.push(customOverlay);
+
+            content.addEventListener("click", () => {
+              setSidebarID(building.rstate.id);
+            });
+            customOverlay.setMap(mapRef.current);
+          });
         }
+      } else {
+        setBuildingMap([]);
       }
     }
   }, [selectedBuilding, mapBounds]);
@@ -415,6 +488,23 @@ export default function Home() {
     });
   };
 
+  const resetFilterData = async () => {
+    setLoadDone(false);
+
+    await getFilterData().then(() => {
+      getApiData(1);
+    });
+  };
+
+  const handleExcelDownload = async () => {
+    fetcher
+      .get(`profit/export-excel`)
+      .then((res) => {
+        console.log(res);
+      })
+      .catch((err) => window.alert(err));
+  };
+
   const checkFilterFlag =
     filterData.articleAddition_articleName.open ||
     filterData.lndpclAr.open ||
@@ -428,6 +518,7 @@ export default function Home() {
 
   useEffect(() => {
     if (mapRef.current === null) return;
+    if (checkFilterFlag !== false) return;
 
     let body: IBody = {
       sorting: {
@@ -446,16 +537,21 @@ export default function Home() {
         profit_rate_filter: [],
       },
     };
-
+    let cnt = 0;
     Object.entries(filterData).map(([key, value]: [key: any, value: any]) => {
       if (value.type === "text") {
-        if (value.value.length === value.initialValue.length) return;
+        if (value.value.length === value.initialValue.length) {
+          cnt++;
+          return;
+        }
       } else if (value.type === "number") {
         if (
           value.value.min === value.initialValue.min &&
           value.value.max === value.initialValue.max
-        )
+        ) {
+          cnt++;
           return;
+        }
       }
       if (value.label === "건물타입") {
         body.filters.articleName_filter = value.value;
@@ -495,26 +591,25 @@ export default function Home() {
         body.filters.profit_rate_filter = tmp;
       }
     });
-    console.log(body);
-
-    fetcher
-      .post(`rstate?page=1&items_per_page=4000`, {
-        filters: body.filters,
-        sorting: body.sorting,
-      })
-      .then((res) => setSelectedBuilding(res.data.data));
+    if (cnt === 9) return;
+    setLoadDone(false);
+    getApiData(1, body);
   }, [checkFilterFlag]);
 
   return (
     <>
       <main className="w-full h-[calc(100vh-64px)] relative">
-        <MapSidebar />
-        <MapInput />
+        <MapSidebar resetFilterData={resetFilterData} />
         <div
           id="map"
           className="w-full h-full"
         />
-        <div className="absolute max-w-[50vw] h-fit overflow-x-scroll right-4 top-4 gap-2 flex flex-row z-50">
+        {!loadDone && (
+          <div className="absolute z-[100] top-0 left-0 w-full h-full opacity-40 bg-black flex justify-center items-center font-bold text-xl text-white">
+            Loading...
+          </div>
+        )}
+        <div className="absolute max-w-[50vw] h-fit overflow-x-scroll right-4 top-4 gap-2 flex flex-row z-50 element-selector">
           {Object.entries(filterData).map(([key, value]) => (
             <div
               className="flex flex-col gap-2 bg-white flex-shrink-0 shadow-md rounded-xl border h-fit box-border"
@@ -615,13 +710,19 @@ export default function Home() {
         </div>
         <div className="absolute right-4 bottom-4 z-50 flex flex-row gap-2">
           <div
-            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center"
+            onClick={handleExcelDownload}
+            className="w-fit h-8 px-4 bg-white shadow-md rounded-md z-50 flex items-center justify-center cursor-pointer"
+          >
+            엑셀 다운로드
+          </div>
+          <div
+            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center cursor-pointer"
             onClick={handleMapChangetoDistrict}
           >
             지적편집도
           </div>
           <div
-            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center"
+            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center cursor-pointer"
             onClick={handleMapChangetoRoad}
           >
             일반지도
