@@ -17,16 +17,21 @@ import {
 } from "@/state/atom";
 import { fetcher } from "@/api/fetcher";
 import { IApiData, IApiIndivData } from "@/interfaces/calcData";
+import Link from "next/link";
 
 const detailLine = "w-full flex flex-row gap-6";
 const detailLeftCls = "font-semibold whitespace-nowrap";
 const detailRightCls = "font-normal text-gray-400 whitespace-nowrap";
 
 interface ISidebarProps {
+  handleRoadViewClick: ({ lat, lng }: { lat: number; lng: number }) => void;
   resetFilterData: () => void;
 }
 
-const MapSidebar = ({ resetFilterData }: ISidebarProps) => {
+const MapSidebar = ({
+  resetFilterData,
+  handleRoadViewClick,
+}: ISidebarProps) => {
   const [sidebarType, setSidebarType] = useState(0);
   const [sidebarID, setSidebarID] = useRecoilState(sidebarRecoilData);
   const buildingData = useRecoilValue(buildingOnView);
@@ -70,9 +75,7 @@ const MapSidebar = ({ resetFilterData }: ISidebarProps) => {
   }, [sidebarID]);
 
   useEffect(() => {
-    console.log("lu");
     fetcher.get(`rstate/last_update/`).then((res) => {
-      console.log("lu", res.data);
       setLastUpdate(res.data.last_update);
     });
   }, []);
@@ -88,7 +91,7 @@ const MapSidebar = ({ resetFilterData }: ISidebarProps) => {
         <aside
           className={`${
             sidebarType === 0 ? "w-[400px]" : "w-fit"
-          } h-full  flex-shrink-0 border-r border-r-gray-400 bg-white absolute left-0 z-30 pt-10 px-16 shadow-lg flex flex-col`}
+          } h-full flex-shrink-0 border-r border-r-gray-400 bg-white z-30 pt-10 px-16 shadow-lg flex flex-col`}
         >
           {lastUpdate !== "" && (
             <div className="text-lg font-semibold mb-10">
@@ -182,6 +185,7 @@ const MapSidebar = ({ resetFilterData }: ISidebarProps) => {
                   buildingData={selectedBuilidng}
                   onClick={() => handleCardClick()}
                   type={sidebarType}
+                  handleRoadViewClick={handleRoadViewClick}
                 />
                 <div className="w-full h-[1px] border border-gray-200 my-4" />
                 <div className="w-full flex flex-col gap-4">
@@ -197,10 +201,8 @@ const MapSidebar = ({ resetFilterData }: ISidebarProps) => {
                       <div className={`${detailLeftCls}`}>건물허가일자</div>
                       <div className={`${detailRightCls}`}>
                         {/* {dummyBuildingData[0].articleDetail_articleConfirmYMD} */}
-                        {
-                          selectedBuilidng.rstate
-                            .articleDetail_articleConfirmYMD
-                        }
+                        {selectedBuilidng.rstate
+                          .articleFacility_buildingUseAprvYmd || "-"}
                       </div>
                     </div>
                   </div>
@@ -325,6 +327,19 @@ const MapSidebar = ({ resetFilterData }: ISidebarProps) => {
                           (천원)
                           {/* {selectedBuilidng.selfInvestmentPrice}(천원) */}
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`${detailLine}`}>
+                    <div className="flex flex-row gap-6">
+                      <div className="basis-2/5 flex flex-row gap-6">
+                        <Link
+                          href={`${selectedBuilidng.rstate.articleExistTabs}`}
+                          target="_blank"
+                          className={`${detailLeftCls} hover:text-blue-600`}
+                        >
+                          네이버 매물 링크
+                        </Link>
                       </div>
                     </div>
                   </div>

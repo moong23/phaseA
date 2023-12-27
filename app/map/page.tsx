@@ -77,7 +77,10 @@ export default function Home() {
   const [selectedBuilding, setSelectedBuilding] =
     useRecoilState<any>(buildingOnView);
   const [buildingMap, setBuildingMap] = useRecoilState<any>(buildingInMap);
-
+  const [roadViewCoords, setRoadViewCoords] = useState({
+    lat: 0,
+    lng: 0,
+  }); // [lat, lng
   const markersRef = useRef<any>([]);
   const [mapBounds, setMapBounds] = useState({
     sw: { lat: 0, lng: 0 },
@@ -100,8 +103,12 @@ export default function Home() {
             apiListKey = `${key}_list`;
           }
           if (Array.isArray(filterApiData[apiListKey])) {
-            updatedFilterData[key].initialValue = filterApiData[apiListKey];
-            updatedFilterData[key].value = filterApiData[apiListKey];
+            updatedFilterData[key].initialValue = filterApiData[
+              apiListKey
+            ].filter((v) => v !== null);
+            updatedFilterData[key].value = filterApiData[apiListKey].filter(
+              (v) => v !== null
+            );
           }
         } else if (value.type === "number") {
           const apiNumberData = filterApiData[key];
@@ -173,6 +180,7 @@ export default function Home() {
         });
       }
     };
+    setLoadDone(false);
     getFilterData();
     kakaoMapScript.addEventListener("load", onLoadKakaoAPI);
     return () => kakaoMapScript.removeEventListener("load", onLoadKakaoAPI);
@@ -188,7 +196,7 @@ export default function Home() {
       const position = new window.kakao.maps.LatLng(
         chosen.rstate.articleDetail_latitude,
         // chosen.rstate.articleDetail_longitude - 0.0025
-        chosen.rstate.articleDetail_longitude - 0.0007
+        chosen.rstate.articleDetail_longitude
       );
 
       mapRef.current.setCenter(position);
@@ -242,6 +250,9 @@ export default function Home() {
         } else if (err.message === "Request failed with status code 400") {
           console.log("done!");
           setLoadDone(true);
+        } else if (err.message === "Network Error") {
+          alert("server error");
+          setLoadDone(true);
         }
       });
   };
@@ -250,17 +261,17 @@ export default function Home() {
     getApiData(1);
   }, [sidebarSortState.value]);
 
-  useEffect(() => {
-    console.log("api call");
-    console.log(selectedBuilding.length);
-  }, [selectedBuilding]);
-
   const handleMapChangetoDistrict = () => {
     if (window.kakao) {
       const MAP_DISTRICT = window.kakao.maps.MapTypeId.USE_DISTRICT;
       const MAP_ROAD = window.kakao.maps.MapTypeId.ROADMAP;
       mapRef.current.removeOverlayMapTypeId(MAP_ROAD);
       mapRef.current.addOverlayMapTypeId(MAP_DISTRICT);
+      var roadviewContainer = document.getElementById("roadview");
+      if (roadviewContainer?.classList.contains("z-50")) {
+        roadviewContainer?.classList.remove("z-50");
+        roadviewContainer?.classList.add("hidden");
+      }
     }
   };
 
@@ -270,8 +281,42 @@ export default function Home() {
       const MAP_ROAD = window.kakao.maps.MapTypeId.ROADMAP;
       mapRef.current.removeOverlayMapTypeId(MAP_DISTRICT);
       mapRef.current.addOverlayMapTypeId(MAP_ROAD);
+      var roadviewContainer = document.getElementById("roadview");
+      if (roadviewContainer?.classList.contains("z-50")) {
+        roadviewContainer?.classList.remove("z-50");
+        roadviewContainer?.classList.add("hidden");
+      }
     }
   };
+
+  const handleMapChangetoRoadView = () => {
+    if (window.kakao && roadViewCoords) {
+      var roadviewContainer = document.getElementById("roadview"); // Container for roadview
+
+      roadviewContainer?.classList.remove("hidden");
+      roadviewContainer?.classList.add("z-50");
+      var roadview = new kakao.maps.Roadview(roadviewContainer); // Roadview object
+      var roadviewClient = new kakao.maps.RoadviewClient(); // Roadview helper object
+
+      // Convert roadViewCoords to a kakao.maps.LatLng object
+      var position = new kakao.maps.LatLng(
+        roadViewCoords.lat,
+        roadViewCoords.lng
+      );
+
+      // Extract the nearest panoId to the given position and display the roadview
+      roadviewClient.getNearestPanoId(position, 50, function (panoId: any) {
+        roadview.setPanoId(panoId, position); // Execute roadview with panoId and center coordinates
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (roadViewCoords.lat === 0 && roadViewCoords.lng === 0) return;
+    console.log(roadViewCoords);
+    handleMapChangetoRoadView();
+    // change to the road map view
+  }, [roadViewCoords]);
 
   const clearMarkers = () => {
     markersRef.current.forEach((marker: any) => {
@@ -367,7 +412,8 @@ export default function Home() {
                 </div>
                 <div class='profit_rate'>
                   ${
-                    building.rstate_calculate.profit_rate
+                    typeof (building.rstate_calculate.profit_rate || "-") ===
+                    "number"
                       ? building.rstate_calculate.profit_rate.toFixed(1) + "%"
                       : "-"
                   }
@@ -403,7 +449,7 @@ export default function Home() {
             });
             markersRef.current.push(marker);
           });
-        } else if (mapRef.current.getLevel() <= 2) {
+        } else if (mapRef.current.getLevel() < 2) {
           renderBuilding.forEach((building: IApiData) => {
             const position = new window.kakao.maps.LatLng(
               building.rstate.articleDetail_latitude,
@@ -422,7 +468,7 @@ export default function Home() {
               </div>
               <div class='profit_rate'>
                 ${
-                  building.rstate_calculate.profit_rate
+                  building.rstate_calculate?.profit_rate !== null
                     ? building.rstate_calculate.profit_rate.toFixed(1) + "%"
                     : "-"
                 }
@@ -442,6 +488,14 @@ export default function Home() {
             content.addEventListener("click", () => {
               setSidebarID(building.rstate.id);
             });
+
+            content.addEventListener("mouseenter", () => {
+              customOverlay.setZIndex(9999);
+            });
+            content.addEventListener("mouseleave", () => {
+              customOverlay.setZIndex(50);
+            });
+
             customOverlay.setMap(mapRef.current);
           });
         }
@@ -498,9 +552,15 @@ export default function Home() {
 
   const handleExcelDownload = async () => {
     fetcher
-      .get(`profit/export-excel`)
+      .get(`profit/export_profit_result_csv`)
       .then((res) => {
-        console.log(res);
+        const url = res.data.url;
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "profit_result.csv"); // Define the download file name
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link); // Clean up
       })
       .catch((err) => window.alert(err));
   };
@@ -594,22 +654,32 @@ export default function Home() {
     if (cnt === 9) return;
     setLoadDone(false);
     getApiData(1, body);
+    // console.log(body);
   }, [checkFilterFlag]);
 
   return (
     <>
-      <main className="w-full h-[calc(100vh-64px)] relative">
-        <MapSidebar resetFilterData={resetFilterData} />
+      <main className="w-full h-[calc(100vh-64px)] relative flex flex-row">
+        <MapSidebar
+          resetFilterData={resetFilterData}
+          handleRoadViewClick={setRoadViewCoords}
+        />
         <div
           id="map"
           className="w-full h-full"
-        />
+        >
+          <div
+            id="roadview"
+            className="w-full h-full hidden"
+          ></div>
+        </div>
+
         {!loadDone && (
           <div className="absolute z-[100] top-0 left-0 w-full h-full opacity-40 bg-black flex justify-center items-center font-bold text-xl text-white">
             Loading...
           </div>
         )}
-        <div className="absolute max-w-[50vw] h-fit overflow-x-scroll right-4 top-4 gap-2 flex flex-row z-50 element-selector">
+        <div className="absolute max-w-[50vw] h-fit overflow-x-scroll right-4 top-4 gap-2 flex flex-row z-40 element-selector">
           {Object.entries(filterData).map(([key, value]) => (
             <div
               className="flex flex-col gap-2 bg-white flex-shrink-0 shadow-md rounded-xl border h-fit box-border"
@@ -711,18 +781,18 @@ export default function Home() {
         <div className="absolute right-4 bottom-4 z-50 flex flex-row gap-2">
           <div
             onClick={handleExcelDownload}
-            className="w-fit h-8 px-4 bg-white shadow-md rounded-md z-50 flex items-center justify-center cursor-pointer"
+            className="w-fit h-8 px-4 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
           >
             엑셀 다운로드
           </div>
           <div
-            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center cursor-pointer"
+            className="w-24 h-8 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
             onClick={handleMapChangetoDistrict}
           >
             지적편집도
           </div>
           <div
-            className="w-24 h-8 bg-white shadow-md rounded-md z-50 flex items-center justify-center cursor-pointer"
+            className="w-24 h-8 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
             onClick={handleMapChangetoRoad}
           >
             일반지도

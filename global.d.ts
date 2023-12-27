@@ -8,4 +8,5 @@ declare global {
   interface mapRef {
     current: any;
   }
+  declare const kakao: any;
 }

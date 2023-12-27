@@ -36,7 +36,27 @@ const OnBoardSidebar = () => {
 
   useEffect(() => {
     fetcher.get(`profit/variable`).then((res) => {
-      // setCalcData(res.data);
+      let data: ICalcData = {
+        groundData: {
+          Costs: {
+            AcquisitionPrice: res.data.purchase_related_costs,
+            DesignSupervisionPrice: res.data.design_related_costs,
+          },
+          Volume: res.data.actual_floor_area_ratio,
+          Design: res.data.design_cost,
+          Supervision: res.data.supervision_cost,
+          Construction: res.data.construction_cost,
+        },
+        Expenses: res.data.miscellaneous_expenses,
+        Loans: {
+          Ground: res.data.land_loan,
+          Construction: res.data.construction_loan,
+          ConstructSelf: res.data.personal_construction_loan,
+          Interest: res.data.loan_interest,
+        },
+      };
+
+      setCalcData(data);
     });
   }, []);
 
@@ -59,17 +79,22 @@ const OnBoardSidebar = () => {
 
     setProgress(progress);
   }, [calcData]);
-
   const contentTitle = "text-sm font-semibold";
   const contentValue = "bg-gray-100 px-4 py-2 rounded-lg flex justify-between";
 
   const handleClickButton = (e: React.MouseEvent<HTMLDivElement>) => {
     console.log(calcData);
-    // router.push('/map');
-    fetcher.post("/profit/variable", calcData).then((res) => {
-      // setCalcData(res.data);
-      console.log(res.data);
-    });
+    fetcher
+      .post("/profit/variable", calcData)
+      .then((res) => {
+        // setCalcData(res.data);
+
+        fetcher.get(`/profit/calculate`).then((result) => {
+          console.log(res.data, result.data);
+          router.push("/map");
+        });
+      })
+      .catch((err) => console.error(err));
   };
 
   return (
