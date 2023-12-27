@@ -77,6 +77,7 @@ export default function Home() {
   const [selectedBuilding, setSelectedBuilding] =
     useRecoilState<any>(buildingOnView);
   const [buildingMap, setBuildingMap] = useRecoilState<any>(buildingInMap);
+  const [isRoadView, setIsRoadView] = useState(false);
   const [roadViewCoords, setRoadViewCoords] = useState({
     lat: 0,
     lng: 0,
@@ -271,6 +272,7 @@ export default function Home() {
       if (roadviewContainer?.classList.contains("z-50")) {
         roadviewContainer?.classList.remove("z-50");
         roadviewContainer?.classList.add("hidden");
+        setIsRoadView(false);
       }
     }
   };
@@ -285,6 +287,7 @@ export default function Home() {
       if (roadviewContainer?.classList.contains("z-50")) {
         roadviewContainer?.classList.remove("z-50");
         roadviewContainer?.classList.add("hidden");
+        setIsRoadView(false);
       }
     }
   };
@@ -308,6 +311,7 @@ export default function Home() {
       roadviewClient.getNearestPanoId(position, 50, function (panoId: any) {
         roadview.setPanoId(panoId, position); // Execute roadview with panoId and center coordinates
       });
+      setIsRoadView(true);
     }
   };
 
@@ -550,6 +554,28 @@ export default function Home() {
     });
   };
 
+  const handleExcelUpload = async () => {
+    const file = document.getElementById("excel_file") as HTMLInputElement;
+    file.click();
+    file.onchange = () => {
+      if (file.files === null) return;
+      const formData = new FormData();
+      formData.append("file", file.files[0]);
+      console.log(formData.get("file"));
+
+      fetcher
+        .post(`/rstate/upload_building_unit_price_xlsx/`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        })
+        .then((res) => {
+          window.alert(res.data.info);
+        })
+        .catch((err) => window.alert(err));
+    };
+  };
+
   const handleExcelDownload = async () => {
     fetcher
       .get(`profit/export_profit_result_csv`)
@@ -672,130 +698,149 @@ export default function Home() {
             id="roadview"
             className="w-full h-full hidden"
           ></div>
-        </div>
 
-        {!loadDone && (
-          <div className="absolute z-[100] top-0 left-0 w-full h-full opacity-40 bg-black flex justify-center items-center font-bold text-xl text-white">
-            Loading...
-          </div>
-        )}
-        <div className="absolute max-w-[50vw] h-fit overflow-x-scroll right-4 top-4 gap-2 flex flex-row z-40 element-selector">
-          {Object.entries(filterData).map(([key, value]) => (
-            <div
-              className="flex flex-col gap-2 bg-white flex-shrink-0 shadow-md rounded-xl border h-fit box-border"
-              key={key}
-            >
+          {!loadDone && (
+            <div className="absolute z-[100] top-0 left-0 w-full h-full opacity-40 bg-black flex justify-center items-center font-bold text-xl text-white">
+              Loading...
+            </div>
+          )}
+          <div className="absolute w-full px-4 justify-end h-fit overflow-x-scroll top-4 gap-2 flex flex-row z-40 element-selector">
+            {Object.entries(filterData).map(([key, value]) => (
               <div
-                className="flex flex-row gap-2 justify-between text-gray-500 px-4 py-1"
-                onClick={handleFilterClick}
-                id={key}
+                className="flex flex-col gap-2 bg-white flex-shrink-0 shadow-md rounded-xl border h-fit box-border"
+                key={key}
               >
-                {value.label}
-                <Image
-                  src={arrowDownSvg}
-                  alt="arrowDown"
-                  width={16}
-                  height={16}
+                <div
+                  className="flex flex-row gap-2 justify-between text-gray-500 px-4 py-1"
+                  onClick={handleFilterClick}
+                  id={key}
+                >
+                  {value.label}
+                  <Image
+                    src={arrowDownSvg}
+                    alt="arrowDown"
+                    width={16}
+                    height={16}
+                  />
+                </div>
+                {value.open && value.initialValue && (
+                  <div className="w-max bg-blue max-h-[200px] overflow-y-scroll pb-2">
+                    {value.type === "text"
+                      ? Array.isArray(value.initialValue) &&
+                        value.initialValue.map((val: string) => (
+                          <div
+                            className="flex flex-row gap-2 items-center px-4 box-border"
+                            key={val}
+                          >
+                            <input
+                              type="checkbox"
+                              id={val}
+                              value={val}
+                              checked={
+                                Array.isArray(value.value) &&
+                                value.value.includes(val)
+                              }
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setFilterData((prevFilterData: any) => {
+                                  const updatedFilterData = {
+                                    ...prevFilterData,
+                                  };
+                                  const currentFilterValue =
+                                    updatedFilterData[key].value;
+                                  if (Array.isArray(currentFilterValue)) {
+                                    if (checked) {
+                                      updatedFilterData[key].value = [
+                                        ...currentFilterValue,
+                                        val,
+                                      ];
+                                    } else {
+                                      updatedFilterData[key].value =
+                                        currentFilterValue.filter(
+                                          (v) => v !== val
+                                        );
+                                    }
+                                  }
+                                  return updatedFilterData;
+                                });
+                              }}
+                            />
+                            <label
+                              htmlFor={val}
+                              className="block"
+                            >
+                              {val}
+                            </label>
+                          </div>
+                        ))
+                      : typeof value.value === "object" &&
+                        value.type === "number" &&
+                        value.value !== null &&
+                        "min" in value.value &&
+                        "max" in value.value && (
+                          <div className="flex gap-2 px-4">
+                            <input
+                              type="number"
+                              value={value.value.min}
+                              onChange={(e) =>
+                                handleRangeChange(key, "min", e.target.value)
+                              }
+                              className="w-16 rounded border-b text-center"
+                            />
+                            <span>~</span>
+                            <input
+                              type="number"
+                              value={value.value.max}
+                              onChange={(e) =>
+                                handleRangeChange(key, "max", e.target.value)
+                              }
+                              className="w-16 rounded border-b text-center"
+                            />
+                          </div>
+                        )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="w-full absolute bottom-4 px-4 z-50 flex flex-row justify-between">
+            <div className="flex flex-row gap-4">
+              <div
+                onClick={handleExcelUpload}
+                className={`${
+                  isRoadView ? "hidden" : ""
+                } w-fit h-8 px-4 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer`}
+              >
+                엑셀 업로드
+                <input
+                  type="file"
+                  id="excel_file"
+                  className="hidden"
                 />
               </div>
-              {value.open && value.initialValue && (
-                <div className="w-max bg-blue max-h-[200px] overflow-y-scroll pb-2">
-                  {value.type === "text"
-                    ? Array.isArray(value.initialValue) &&
-                      value.initialValue.map((val: string) => (
-                        <div
-                          className="flex flex-row gap-2 items-center px-4 box-border"
-                          key={val}
-                        >
-                          <input
-                            type="checkbox"
-                            id={val}
-                            value={val}
-                            checked={
-                              Array.isArray(value.value) &&
-                              value.value.includes(val)
-                            }
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setFilterData((prevFilterData: any) => {
-                                const updatedFilterData = {
-                                  ...prevFilterData,
-                                };
-                                const currentFilterValue =
-                                  updatedFilterData[key].value;
-                                if (Array.isArray(currentFilterValue)) {
-                                  if (checked) {
-                                    updatedFilterData[key].value = [
-                                      ...currentFilterValue,
-                                      val,
-                                    ];
-                                  } else {
-                                    updatedFilterData[key].value =
-                                      currentFilterValue.filter(
-                                        (v) => v !== val
-                                      );
-                                  }
-                                }
-                                return updatedFilterData;
-                              });
-                            }}
-                          />
-                          <label
-                            htmlFor={val}
-                            className="block"
-                          >
-                            {val}
-                          </label>
-                        </div>
-                      ))
-                    : typeof value.value === "object" &&
-                      value.type === "number" &&
-                      value.value !== null &&
-                      "min" in value.value &&
-                      "max" in value.value && (
-                        <div className="flex gap-2 px-4">
-                          <input
-                            type="number"
-                            value={value.value.min}
-                            onChange={(e) =>
-                              handleRangeChange(key, "min", e.target.value)
-                            }
-                            className="w-16 rounded border-b text-center"
-                          />
-                          <span>~</span>
-                          <input
-                            type="number"
-                            value={value.value.max}
-                            onChange={(e) =>
-                              handleRangeChange(key, "max", e.target.value)
-                            }
-                            className="w-16 rounded border-b text-center"
-                          />
-                        </div>
-                      )}
-                </div>
-              )}
+              <div
+                onClick={handleExcelDownload}
+                className={`${
+                  isRoadView ? "hidden" : ""
+                } w-fit h-8 px-4 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer`}
+              >
+                엑셀 다운로드
+              </div>
             </div>
-          ))}
-        </div>
-        <div className="absolute right-4 bottom-4 z-50 flex flex-row gap-2">
-          <div
-            onClick={handleExcelDownload}
-            className="w-fit h-8 px-4 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
-          >
-            엑셀 다운로드
-          </div>
-          <div
-            className="w-24 h-8 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
-            onClick={handleMapChangetoDistrict}
-          >
-            지적편집도
-          </div>
-          <div
-            className="w-24 h-8 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
-            onClick={handleMapChangetoRoad}
-          >
-            일반지도
+            <div className="flex flex-row gap-4">
+              <div
+                className="w-24 h-8 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
+                onClick={handleMapChangetoDistrict}
+              >
+                지적편집도
+              </div>
+              <div
+                className="w-24 h-8 bg-white shadow-md rounded-md flex items-center justify-center cursor-pointer"
+                onClick={handleMapChangetoRoad}
+              >
+                일반지도
+              </div>
+            </div>
           </div>
         </div>
       </main>
