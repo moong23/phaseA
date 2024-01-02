@@ -29,7 +29,11 @@ const Button = ({
   );
 };
 
-const OnBoardSidebar = () => {
+const OnBoardSidebar = ({
+  setIsComplete,
+}: {
+  setIsComplete: (e: boolean) => void;
+}) => {
   const [calcData, setCalcData] = useRecoilState(calcRecoilData);
   const [progress, setProgress] = useState(0);
   const router = useRouter();
@@ -84,6 +88,8 @@ const OnBoardSidebar = () => {
 
   const handleClickButton = (e: React.MouseEvent<HTMLDivElement>) => {
     console.log(calcData);
+    setIsComplete(false);
+
     fetcher
       .post("/profit/variable", calcData)
       .then((res) => {
@@ -91,6 +97,7 @@ const OnBoardSidebar = () => {
 
         fetcher.get(`/profit/calculate`).then((result) => {
           console.log(res.data, result.data);
+          setIsComplete(true);
           router.push("/auth/map");
         });
       })
