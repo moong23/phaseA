@@ -27,7 +27,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "app/map/page.jsx"
+    "app/auth/map/page.jsx"
   ],
   "exclude": ["node_modules"]
 }
