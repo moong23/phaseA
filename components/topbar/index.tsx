@@ -8,7 +8,7 @@ const Topbar = () => {
       <div className="flex flex-row items-center gap-10">
         {Object.entries(TopbarElement).map(([key, value], index) => (
           <Link
-            href={`/${key}`}
+            href={`/auth/${key}`}
             key={index}
             className="text-lg font-bold"
           >
