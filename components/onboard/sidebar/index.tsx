@@ -91,7 +91,7 @@ const OnBoardSidebar = () => {
 
         fetcher.get(`/profit/calculate`).then((result) => {
           console.log(res.data, result.data);
-          router.push("/map");
+          router.push("/auth/map");
         });
       })
       .catch((err) => console.error(err));
