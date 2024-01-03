@@ -548,6 +548,7 @@ export default function Home() {
 
   const resetFilterData = async () => {
     setLoadDone(false);
+    clearMarkers();
 
     await getFilterData().then(() => {
       getApiData(1);
